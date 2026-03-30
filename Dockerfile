@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create data directory for SQLite
-RUN mkdir -p /data /app/osint-adapter
+RUN mkdir -p /app/data /app/osint-adapter
 
 # Copy Spring Boot jar
 COPY --from=builder /build/target/*.jar /app/app.jar

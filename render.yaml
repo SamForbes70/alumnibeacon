@@ -2,16 +2,22 @@ services:
   - type: web
     name: alumnibeacon
     runtime: docker
-    plan: free
+    plan: starter
     healthCheckPath: /actuator/health
     envVars:
       - key: JWT_SECRET
-        generateValue: true
+        sync: false
+      - key: API_KEY_OPENROUTER
+        sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
       - key: AUGUST_ADAPTER_URL
         value: http://localhost:8000
       - key: DATA_DIR
-        value: /data
+        value: /app/data
+      - key: PORT
+        value: 8080
     disk:
       name: alumnibeacon-data
-      mountPath: /data
+      mountPath: /app/data
       sizeGB: 1
