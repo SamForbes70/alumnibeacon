@@ -15,7 +15,7 @@ public class JobQueue {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "investigation_id", nullable = false, unique = true)
+    @Column(name = "investigation_id", nullable = false)
     private String investigationId;
 
     @Column(name = "tenant_id", nullable = false)
@@ -23,12 +23,15 @@ public class JobQueue {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Status status = Status.PENDING;
 
     @Column(nullable = false)
+    @Builder.Default
     private int attempts = 0;
 
     @Column(name = "max_attempts", nullable = false)
+    @Builder.Default
     private int maxAttempts = 3;
 
     @Column(name = "payload_json", columnDefinition = "TEXT")
@@ -41,6 +44,7 @@ public class JobQueue {
     private String errorMessage;
 
     @Column(name = "scheduled_at", nullable = false)
+    @Builder.Default
     private LocalDateTime scheduledAt = LocalDateTime.now();
 
     @Column(name = "started_at")
@@ -48,6 +52,12 @@ public class JobQueue {
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.scheduledAt == null) this.scheduledAt = LocalDateTime.now();
+        if (this.status == null) this.status = Status.PENDING;
+    }
 
     public enum Status { PENDING, PROCESSING, COMPLETED, FAILED }
 }
