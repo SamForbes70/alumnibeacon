@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | AlumniBeacon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script>tailwind.config={theme:{extend:{colors:{beacon:{charcoal:'#1C2526',magenta:'#9C2A6B',gold:'#C9A66B',cream:'#F8F1E9','river-blue':'#4A7C9D'}}}}}</script>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');body{font-family:'Inter',sans-serif;background:#F8F1E9}.font-serif{font-family:'Playfair Display',serif}</style>
+</head>
+<body class="min-h-screen">
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-beacon-charcoal text-white flex flex-col fixed h-full">
+        <div class="p-6 border-b border-gray-700">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-beacon-gold rounded-full flex items-center justify-center">
+                    <span class="text-beacon-charcoal font-bold text-sm">AB</span>
+                </div>
+                <div>
+                    <h1 class="font-serif text-lg font-semibold text-beacon-gold">AlumniBeacon</h1>
+                    <p class="text-xs text-gray-400">OSINT Gateway</p>
+                </div>
+            </div>
+        </div>
+        <nav class="flex-1 p-4 space-y-1">
+            <a href="/dashboard" class="flex items-center gap-3 px-3 py-2 rounded bg-beacon-magenta bg-opacity-20 border-l-2 border-beacon-magenta text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                Dashboard
+            </a>
+            <a href="/investigations" class="flex items-center gap-3 px-3 py-2 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                Investigations
+            </a>
+            <a href="/investigations/new" class="flex items-center gap-3 px-3 py-2 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                New Search
+            </a>
+        </nav>
+        <div class="p-4 border-t border-gray-700">
+            <a href="/logout" class="text-xs text-beacon-magenta hover:text-pink-300">Sign out</a>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="ml-64 flex-1 p-8">
+        <div class="mb-8">
+            <h2 class="font-serif text-3xl text-beacon-charcoal">Dashboard</h2>
+            <p class="text-gray-500 mt-1">Overview of your alumni investigations</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 mb-1">Total Investigations</p>
+                <p class="text-3xl font-semibold text-beacon-charcoal" th:text="${stats.total}">0</p>
+            </div>
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 mb-1">Completed</p>
+                <p class="text-3xl font-semibold text-beacon-deep-green" th:text="${stats.completed}">0</p>
+            </div>
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 mb-1">Success Rate</p>
+                <p class="text-3xl font-semibold text-beacon-river-blue" th:text="${stats.successRate} + '%'">0%</p>
+            </div>
+        </div>
+
+        <!-- Recent Investigations -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between p-6 border-b border-gray-100">
+                <h3 class="font-serif text-xl text-beacon-charcoal">Recent Investigations</h3>
+                <a href="/investigations/new"
+                   class="bg-beacon-magenta text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-800 transition-colors">
+                    + New Search
+                </a>
+            </div>
+
+            <!-- Empty state -->
+            <div th:if="${#lists.isEmpty(investigations)}" class="p-12 text-center">
+                <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <p class="text-gray-400 mb-4">No investigations yet</p>
+                <a href="/investigations/new" class="text-beacon-magenta hover:underline text-sm">Start your first search</a>
+            </div>
+
+            <!-- Investigation list -->
+            <div th:unless="${#lists.isEmpty(investigations)}">
+                <div th:each="inv : ${investigations}" class="flex items-center justify-between p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-beacon-cream rounded-full flex items-center justify-center">
+                            <span class="text-beacon-charcoal font-semibold text-sm" th:text="${#strings.substring(inv.subjectName, 0, 2).toUpperCase()}">AB</span>
+                        </div>
+                        <div>
+                            <p class="font-medium text-beacon-charcoal" th:text="${inv.subjectName}">Name</p>
+                            <p class="text-xs text-gray-400" th:text="${#temporals.format(inv.createdAt, 'dd MMM yyyy')}">Date</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <!-- Confidence score -->
+                        <span th:if="${inv.confidenceScore != null}"
+                              class="text-sm font-medium text-beacon-river-blue"
+                              th:text="${inv.confidenceScore} + '%'">72%</span>
+                        <!-- Status badge -->
+                        <span th:switch="${inv.status}">
+                            <span th:case="'PENDING'" class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">Queued</span>
+                            <span th:case="'PROCESSING'" class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Processing</span>
+                            <span th:case="'COMPLETED'" class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Complete</span>
+                            <span th:case="'FAILED'" class="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">Failed</span>
+                        </span>
+                        <a th:href="@{/investigations/{id}(id=${inv.id})}" class="text-beacon-magenta hover:underline text-sm">View →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

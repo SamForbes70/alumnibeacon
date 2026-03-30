@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  alumnibeacon:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - alumnibeacon-data:/data
+    environment:
+      - JWT_SECRET=change-this-to-a-secure-random-string-min-32-chars
+      - AUGUST_ADAPTER_URL=http://localhost:8000
+      - DATA_DIR=/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  alumnibeacon-data:

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: layout(~{::title}, ~{::main})}">
+<head>
+    <title>Investigations - AlumniBeacon</title>
+</head>
+<body>
+<main>
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: #1C2526; font-family: 'Playfair Display', serif;">Investigations</h1>
+            <p class="text-sm mt-1" style="color: #6B7280;">All alumni search investigations for your organisation</p>
+        </div>
+        <a href="/investigations/new"
+           class="inline-flex items-center px-4 py-2 rounded-lg text-white text-sm font-medium transition-all hover:opacity-90"
+           style="background: #9C2A6B;">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            New Investigation
+        </a>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="rounded-lg p-4 border" style="background: #F9FAFB; border-color: #E5E7EB;">
+            <p class="text-xs font-medium" style="color: #6B7280;">TOTAL</p>
+            <p class="text-2xl font-bold mt-1" style="color: #1C2526;" th:text="${totalCount}">0</p>
+        </div>
+        <div class="rounded-lg p-4 border" style="background: #F9FAFB; border-color: #E5E7EB;">
+            <p class="text-xs font-medium" style="color: #6B7280;">COMPLETED</p>
+            <p class="text-2xl font-bold mt-1" style="color: #059669;" th:text="${completedCount}">0</p>
+        </div>
+        <div class="rounded-lg p-4 border" style="background: #F9FAFB; border-color: #E5E7EB;">
+            <p class="text-xs font-medium" style="color: #6B7280;">IN PROGRESS</p>
+            <p class="text-2xl font-bold mt-1" style="color: #D97706;" th:text="${processingCount}">0</p>
+        </div>
+        <div class="rounded-lg p-4 border" style="background: #F9FAFB; border-color: #E5E7EB;">
+            <p class="text-xs font-medium" style="color: #6B7280;">CREDITS USED</p>
+            <p class="text-2xl font-bold mt-1" style="color: #C9A66B;" th:text="${creditsUsed}">0</p>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="flex items-center gap-3 mb-4">
+        <div class="flex-1">
+            <input type="text" placeholder="Search by name..."
+                   class="w-full px-3 py-2 rounded-lg border text-sm"
+                   style="border-color: #E5E7EB; color: #1C2526;"
+                   hx-get="/investigations"
+                   hx-trigger="keyup changed delay:300ms"
+                   hx-target="#investigation-table"
+                   name="search"/>
+        </div>
+        <select class="px-3 py-2 rounded-lg border text-sm" style="border-color: #E5E7EB; color: #1C2526;"
+                hx-get="/investigations"
+                hx-trigger="change"
+                hx-target="#investigation-table"
+                name="status">
+            <option value="">All Status</option>
+            <option value="PENDING">Pending</option>
+            <option value="PROCESSING">Processing</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="FAILED">Failed</option>
+        </select>
+    </div>
+
+    <!-- Investigation Table -->
+    <div id="investigation-table" class="rounded-xl border overflow-hidden" style="border-color: #E5E7EB;">
+        <table class="w-full">
+            <thead style="background: #F9FAFB;">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">SUBJECT</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">STATUS</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">CONFIDENCE</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">CREATED</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody th:fragment="rows">
+                <!-- Empty state -->
+                <tr th:if="${#lists.isEmpty(investigations)}">
+                    <td colspan="5" class="px-4 py-12 text-center">
+                        <div class="flex flex-col items-center">
+                            <svg class="w-12 h-12 mb-3" style="color: #D1D5DB;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <p class="text-sm font-medium" style="color: #6B7280;">No investigations yet</p>
+                            <p class="text-xs mt-1" style="color: #9CA3AF;">Create your first investigation to get started</p>
+                            <a href="/investigations/new" class="mt-3 text-sm font-medium" style="color: #9C2A6B;">Create Investigation →</a>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Investigation rows -->
+                <tr th:each="inv : ${investigations}"
+                    class="border-t hover:bg-gray-50 cursor-pointer transition-colors"
+                    style="border-color: #F3F4F6;"
+                    th:onclick="|window.location='/investigations/' + ${inv.id}|">
+
+                    <!-- Subject -->
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                                 style="background: #9C2A6B;"
+                                 th:text="${#strings.substring(inv.subjectName, 0, 1).toUpperCase()}">A</div>
+                            <div>
+                                <p class="text-sm font-medium" style="color: #1C2526;" th:text="${inv.subjectName}">John Smith</p>
+                                <p class="text-xs" style="color: #9CA3AF;" th:text="${inv.subjectDob != null ? inv.subjectDob : 'DOB unknown'}">1985</p>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Status -->
+                    <td class="px-4 py-3">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                              th:classappend="${inv.status == 'COMPLETED'} ? 'bg-green-100 text-green-800' :
+                                              (${inv.status == 'PROCESSING'} ? 'bg-yellow-100 text-yellow-800' :
+                                              (${inv.status == 'FAILED'} ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))"
+                              th:text="${inv.status}">PENDING</span>
+
+                        <!-- Progress bar for processing -->
+                        <div th:if="${inv.status == 'PROCESSING'}" class="mt-1 w-24 bg-gray-200 rounded-full h-1">
+                            <div class="h-1 rounded-full" style="background: #C9A66B; width: 45%;"></div>
+                        </div>
+                    </td>
+
+                    <!-- Confidence -->
+                    <td class="px-4 py-3">
+                        <div th:if="${inv.confidenceScore != null}" class="flex items-center gap-2">
+                            <div class="w-16 bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full"
+                                     th:style="|background: ${inv.confidenceScore >= 70 ? '#059669' : (inv.confidenceScore >= 40 ? '#D97706' : '#DC2626')}; width: ${inv.confidenceScore}%;|"></div>
+                            </div>
+                            <span class="text-sm font-medium" style="color: #1C2526;" th:text="${inv.confidenceScore + '%'}">72%</span>
+                        </div>
+                        <span th:unless="${inv.confidenceScore != null}" class="text-xs" style="color: #9CA3AF;">—</span>
+                    </td>
+
+                    <!-- Created -->
+                    <td class="px-4 py-3">
+                        <span class="text-sm" style="color: #6B7280;"
+                              th:text="${#temporals.format(inv.createdAt, 'dd MMM yyyy')}">01 Jan 2026</span>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                            <a th:href="'/investigations/' + ${inv.id}"
+                               class="text-xs px-2 py-1 rounded border transition-colors hover:bg-gray-50"
+                               style="color: #6B7280; border-color: #E5E7EB;">View</a>
+
+                            <a th:if="${inv.status == 'COMPLETED'}"
+                               th:href="'/investigations/' + ${inv.id} + '/report'"
+                               class="text-xs px-2 py-1 rounded border transition-colors hover:opacity-90"
+                               style="color: #9C2A6B; border-color: #9C2A6B;">PDF</a>
+
+                            <button th:if="${inv.status == 'FAILED'}"
+                                    th:onclick="|rerunInvestigation('${inv.id}')|" 
+                                    class="text-xs px-2 py-1 rounded border transition-colors hover:bg-gray-50"
+                                    style="color: #D97706; border-color: #D97706;">Retry</button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div th:if="${totalPages > 1}" class="flex items-center justify-between mt-4">
+        <p class="text-sm" style="color: #6B7280;"
+           th:text="|Showing ${currentPage * pageSize + 1}-${(currentPage + 1) * pageSize} of ${totalCount}|">Showing 1-20 of 100</p>
+        <div class="flex gap-2">
+            <a th:if="${currentPage > 0}"
+               th:href="'/investigations?page=' + ${currentPage - 1}"
+               class="px-3 py-1 rounded border text-sm" style="border-color: #E5E7EB; color: #6B7280;">Previous</a>
+            <a th:if="${currentPage < totalPages - 1}"
+               th:href="'/investigations?page=' + ${currentPage + 1}"
+               class="px-3 py-1 rounded border text-sm" style="border-color: #E5E7EB; color: #6B7280;">Next</a>
+        </div>
+    </div>
+
+    <script>
+        function rerunInvestigation(id) {
+            if (confirm('Retry this investigation? This will use 1 credit.')) {
+                fetch('/investigations/' + id + '/retry', {method: 'POST',
+                    headers: {'X-CSRF-TOKEN': document.querySelector('meta[name=_csrf]')?.content || ''}})
+                    .then(() => window.location.reload());
+            }
+        }
+    </script>
+</main>
+</html>

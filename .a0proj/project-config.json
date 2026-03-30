@@ -1,0 +1,20 @@
+{
+  "name": "august-osint-gateway",
+  "display_name": "August OSINT Gateway",
+  "description": "Spring Boot web application that wraps August/Agent Zero OSINT capabilities for multi-tenant alumni search",
+  "version": "2.0.0",
+  "status": "planning",
+  "tech_stack": {
+    "backend": "Spring Boot 3.4",
+    "language": "Java 21",
+    "database": "SQLite 3",
+    "frontend": "Thymeleaf + HTMX",
+    "intelligence_layer": "Agent Zero / August",
+    "container": "Docker"
+  },
+  "architecture": "single-container",
+  "multi_tenancy": "application-level",
+  "cost_target": "$0-7/month",
+  "created": "2026-03-30",
+  "author": "August AI Assistant"
+}

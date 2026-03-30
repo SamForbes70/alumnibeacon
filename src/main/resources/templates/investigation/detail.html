@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${investigation.subjectName} + ' | AlumniBeacon'">Investigation | AlumniBeacon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script>tailwind.config={theme:{extend:{colors:{beacon:{charcoal:'#1C2526',magenta:'#9C2A6B',gold:'#C9A66B',cream:'#F8F1E9','river-blue':'#4A7C9D','deep-green':'#2E5F4A'}}}}}</script>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');body{font-family:'Inter',sans-serif;background:#F8F1E9}.font-serif{font-family:'Playfair Display',serif}</style>
+</head>
+<body class="min-h-screen">
+<div class="flex min-h-screen">
+    <aside class="w-64 bg-beacon-charcoal text-white flex flex-col fixed h-full">
+        <div class="p-6 border-b border-gray-700"><div class="flex items-center gap-3"><div class="w-8 h-8 bg-beacon-gold rounded-full flex items-center justify-center"><span class="text-beacon-charcoal font-bold text-sm">AB</span></div><div><h1 class="font-serif text-lg font-semibold text-beacon-gold">AlumniBeacon</h1><p class="text-xs text-gray-400">OSINT Gateway</p></div></div></div>
+        <nav class="flex-1 p-4 space-y-1">
+            <a href="/dashboard" class="flex items-center gap-3 px-3 py-2 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">Dashboard</a>
+            <a href="/investigations" class="flex items-center gap-3 px-3 py-2 rounded bg-beacon-magenta bg-opacity-20 border-l-2 border-beacon-magenta text-white">Investigations</a>
+            <a href="/investigations/new" class="flex items-center gap-3 px-3 py-2 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">New Search</a>
+        </nav>
+        <div class="p-4 border-t border-gray-700"><a href="/logout" class="text-xs text-beacon-magenta hover:text-pink-300">Sign out</a></div>
+    </aside>
+    <main class="ml-64 flex-1 p-8">
+        <div class="mb-6">
+            <a href="/investigations" class="text-sm text-gray-400 hover:text-beacon-magenta">← Investigations</a>
+            <h2 class="font-serif text-3xl text-beacon-charcoal mt-2" th:text="${investigation.subjectName}">Subject Name</h2>
+            <p class="text-gray-500 mt-1" th:text="'Investigation started ' + ${#temporals.format(investigation.createdAt, 'dd MMM yyyy HH:mm')}">Date</p>
+        </div>
+
+        <!-- Status card -->
+        <div class="grid grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 mb-2">Status</p>
+                <span th:switch="${investigation.status}">
+                    <span th:case="'PENDING'" class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">⏳ Queued</span>
+                    <span th:case="'PROCESSING'" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">🔍 Processing</span>
+                    <span th:case="'COMPLETED'" class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">✅ Complete</span>
+                    <span th:case="'FAILED'" class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">❌ Failed</span>
+                </span>
+            </div>
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 mb-2">Confidence Score</p>
+                <p class="text-3xl font-semibold text-beacon-river-blue"
+                   th:text="${investigation.confidenceScore != null ? investigation.confidenceScore + '%' : '—'}">—</p>
+            </div>
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 mb-2">Completed</p>
+                <p class="text-sm text-beacon-charcoal"
+                   th:text="${investigation.completedAt != null ? #temporals.format(investigation.completedAt, 'dd MMM HH:mm') : '—'}">—</p>
+            </div>
+        </div>
+
+        <!-- HTMX auto-refresh for pending/processing -->
+        <div th:if="${investigation.status == 'PENDING' or investigation.status == 'PROCESSING'}">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6"
+                 hx-get="/investigations/__${investigation.id}__/status"
+                 hx-trigger="every 5s"
+                 hx-swap="none"
+                 hx-on::after-request="if(JSON.parse(event.detail.xhr.responseText).status==='COMPLETED'||JSON.parse(event.detail.xhr.responseText).status==='FAILED'){window.location.reload()}">
+                <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-blue-700 font-medium">August OSINT search in progress...</p>
+                </div>
+                <p class="text-blue-500 text-sm mt-2">This page will automatically update when results are ready. Typical search time: 30-90 seconds.</p>
+            </div>
+        </div>
+
+        <!-- Results (when completed) -->
+        <div th:if="${investigation.status == 'COMPLETED' and investigation.resultJson != null}">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                <h3 class="font-serif text-xl text-beacon-charcoal mb-6">Search Results</h3>
+                <div class="bg-beacon-cream rounded-lg p-4">
+                    <pre class="text-sm text-gray-700 whitespace-pre-wrap" th:text="${investigation.resultJson}"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error state -->
+        <div th:if="${investigation.status == 'FAILED'}">
+            <div class="bg-red-50 border border-red-200 rounded-xl p-6">
+                <h3 class="font-medium text-red-800 mb-2">Search Failed</h3>
+                <p class="text-red-600 text-sm" th:text="${investigation.errorMessage}">Error details</p>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>
