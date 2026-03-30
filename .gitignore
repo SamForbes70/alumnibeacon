@@ -1,20 +1,42 @@
+# Build artifacts
 target/
 *.jar
 *.war
 *.class
+
+# Database files
 *.db
 *.sqlite
+*.sqlite3
+
+# Environment & secrets
 .env
 .env.*
 !.env.example
+
+# IDE
 .idea/
 *.iml
 .vscode/
+*.swp
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 venv/
+*.egg-info/
+dist/
+build/
+
+# Logs
 *.log
 logs/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Node
 node_modules/
