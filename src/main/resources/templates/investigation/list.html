@@ -184,9 +184,20 @@
     <script>
         function rerunInvestigation(id) {
             if (confirm('Retry this investigation? This will use 1 credit.')) {
-                fetch('/investigations/' + id + '/retry', {method: 'POST',
-                    headers: {'X-CSRF-TOKEN': document.querySelector('meta[name=_csrf]')?.content || ''}})
-                    .then(() => window.location.reload());
+                fetch('/investigations/' + id + '/retry', {
+                    method: 'POST',
+                    credentials: 'include'
+                })
+                .then(function(response) {
+                    if (response.ok || response.redirected) {
+                        window.location.reload();
+                    } else {
+                        alert('Retry failed (status ' + response.status + '). Please try again.');
+                    }
+                })
+                .catch(function() {
+                    alert('Network error. Please check your connection and try again.');
+                });
             }
         }
     </script>

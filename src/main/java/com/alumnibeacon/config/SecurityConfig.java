@@ -41,13 +41,10 @@ public class SecurityConfig {
                     "/actuator/health",
                     "/error"
                 ).permitAll()
+                .requestMatchers("/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                 .anyRequest().authenticated()
             )
-            // Custom login page (no Spring Security form processing)
-            .formLogin(form -> form
-                .loginPage("/login")
-                .permitAll()
-            )
+            // No formLogin — JWT filter handles all authentication
             .logout(logout -> logout
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login?logout")

@@ -70,6 +70,9 @@ public class AdminController {
 
         tenantRepository.findById(tenantId).ifPresent(tenant -> {
             tenant.setName(organisationName);
+            if (contactEmail != null && !contactEmail.isBlank()) {
+                tenant.setContactEmail(contactEmail);
+            }
             tenantRepository.save(tenant);
         });
 

@@ -88,6 +88,23 @@ public class InvestigationService {
         );
     }
 
+    public List<InvestigationDto> listByTenantFiltered(String tenantId, String search, String status) {
+        return investigationRepository
+            .findByTenantFiltered(
+                tenantId,
+                search != null ? search.trim() : "",
+                status != null ? status.trim() : "")
+            .stream().map(InvestigationDto::from).toList();
+    }
+
+    public long countByTenant(String tenantId) {
+        return investigationRepository.countByTenantId(tenantId);
+    }
+
+    public long countByTenantAndStatus(String tenantId, String status) {
+        return investigationRepository.countByTenantIdAndStatus(tenantId, status);
+    }
+
     /** Get raw Investigation entity (for PDF generation etc). */
     public Investigation getEntityById(String id, String tenantId) {
         return investigationRepository.findByIdAndTenantId(id, tenantId)

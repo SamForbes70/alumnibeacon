@@ -20,6 +20,10 @@ public class Tenant {
     @Column(nullable = false, unique = true)
     private String slug;
 
+    @Column(name = "contact_email")
+    private String contactEmail;
+
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     @Builder.Default

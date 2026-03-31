@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Controller
 @RequiredArgsConstructor
@@ -30,11 +31,32 @@ public class InvestigationController {
 
     // ── List investigations ───────────────────────────────────────────────────
     @GetMapping("/investigations")
-    public String list(Authentication auth, Model model) {
+    public String list(Authentication auth, Model model,
+                       @RequestParam(defaultValue = "") String search,
+                       @RequestParam(defaultValue = "") String status,
+                       @RequestParam(defaultValue = "0") int page) {
         TenantDetails td = (TenantDetails) auth.getDetails();
-        List<InvestigationDto> investigations = investigationService.listByTenant(td.tenantId());
-        model.addAttribute("investigations", investigations);
-        model.addAttribute("creditsRemaining", creditService.getBalance(td.tenantId()));
+        String tenantId = td.tenantId();
+
+        List<InvestigationDto> all = investigationService.listByTenantFiltered(tenantId, search, status);
+
+        int pageSize   = 20;
+        int totalPages = (int) Math.ceil((double) all.size() / pageSize);
+        int safePage   = Math.max(0, Math.min(page, Math.max(0, totalPages - 1)));
+        int from = safePage * pageSize;
+        int to   = Math.min(from + pageSize, all.size());
+
+        model.addAttribute("investigations",   all.subList(from, to));
+        model.addAttribute("totalCount",       investigationService.countByTenant(tenantId));
+        model.addAttribute("completedCount",   investigationService.countByTenantAndStatus(tenantId, "COMPLETED"));
+        model.addAttribute("processingCount",  investigationService.countByTenantAndStatus(tenantId, "PROCESSING"));
+        model.addAttribute("creditsUsed",      creditService.getUsed(tenantId));
+        model.addAttribute("creditsRemaining", creditService.getBalance(tenantId));
+        model.addAttribute("totalPages",       totalPages);
+        model.addAttribute("currentPage",      safePage);
+        model.addAttribute("pageSize",         pageSize);
+        model.addAttribute("search",           search);
+        model.addAttribute("status",           status);
         return "investigation/list";
     }
 
@@ -78,11 +100,15 @@ public class InvestigationController {
     @GetMapping("/investigations/{id}/status")
     public String statusFragment(@PathVariable String id,
                                   Authentication auth,
-                                  Model model) {
+                                  Model model,
+                                  HttpServletResponse response) {
         TenantDetails td = (TenantDetails) auth.getDetails();
         InvestigationDto inv = investigationService.getById(id, td.tenantId());
         model.addAttribute("investigation", inv);
-        // Return just the status card fragment for HTMX polling
+        // Tell HTMX to do a full page reload when job is done
+        if ("COMPLETED".equals(inv.status()) || "FAILED".equals(inv.status())) {
+            response.setHeader("HX-Refresh", "true");
+        }
         return "investigation/detail :: statusCard";
     }
 

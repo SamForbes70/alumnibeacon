@@ -11,4 +11,16 @@ public interface InvestigationRepository extends JpaRepository<Investigation, St
     long countByTenantId(String tenantId);
     @Query("SELECT COUNT(i) FROM Investigation i WHERE i.tenantId = :tenantId AND i.status = 'COMPLETED'")
     long countCompletedByTenantId(@Param("tenantId") String tenantId);
+    @Query("SELECT COUNT(i) FROM Investigation i WHERE i.tenantId = :tenantId AND i.status = :status")
+    long countByTenantIdAndStatus(@Param("tenantId") String tenantId, @Param("status") String status);
+
+    @Query("SELECT i FROM Investigation i WHERE i.tenantId = :tenantId " +
+           "AND (:search = '' OR LOWER(i.subjectName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "AND (:status = '' OR i.status = :status) " +
+           "ORDER BY i.createdAt DESC")
+    List<Investigation> findByTenantFiltered(
+        @Param("tenantId") String tenantId,
+        @Param("search") String search,
+        @Param("status") String status
+    );
 }

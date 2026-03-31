@@ -27,7 +27,7 @@
         </div>
 
         <!-- Status card -->
-        <div class="grid grid-cols-3 gap-6 mb-8">
+        <div th:fragment="statusCard" class="grid grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <p class="text-sm text-gray-500 mb-2">Status</p>
                 <span th:switch="${investigation.status}">
@@ -50,19 +50,21 @@
         </div>
 
         <!-- HTMX auto-refresh for pending/processing -->
-        <div th:if="${investigation.status == 'PENDING' or investigation.status == 'PROCESSING'}">
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6"
-                 hx-get="/investigations/__${investigation.id}__/status"
-                 hx-trigger="every 5s"
-                 hx-swap="none"
-                 hx-on::after-request="if(JSON.parse(event.detail.xhr.responseText).status==='COMPLETED'||JSON.parse(event.detail.xhr.responseText).status==='FAILED'){window.location.reload()}">
+        <div th:if="${investigation.status == 'PENDING' or investigation.status == 'PROCESSING'}"
+             id="polling-banner"
+             th:attr="hx-get=@{/investigations/{id}/status(id=${investigation.id})}"
+             hx-trigger="every 5s"
+             hx-target="#polling-banner"
+             hx-swap="outerHTML">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
                 <div class="flex items-center gap-3">
                     <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                     <p class="text-blue-700 font-medium">August OSINT search in progress...</p>
                 </div>
-                <p class="text-blue-500 text-sm mt-2">This page will automatically update when results are ready. Typical search time: 30-90 seconds.</p>
+                <p class="text-blue-500 text-sm mt-2">This page will automatically update when results are ready. Typical search time: 30–90 seconds.</p>
             </div>
         </div>
+
 
         <!-- Results (when completed) -->
         <div th:if="${investigation.status == 'COMPLETED' and investigation.resultJson != null}">
