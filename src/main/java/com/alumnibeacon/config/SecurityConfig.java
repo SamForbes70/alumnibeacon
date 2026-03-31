@@ -44,6 +44,17 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                 .anyRequest().authenticated()
             )
+            // Redirect unauthenticated/unauthorized browser requests to /login
+            .exceptionHandling(ex -> ex
+                // Fires for AuthenticationException (no credentials)
+                .authenticationEntryPoint((request, response, authException) ->
+                    response.sendRedirect("/login")
+                )
+                // Fires for AccessDeniedException (anonymous user hitting protected route)
+                .accessDeniedHandler((request, response, accessDeniedException) ->
+                    response.sendRedirect("/login")
+                )
+            )
             // No formLogin — JWT filter handles all authentication
             .logout(logout -> logout
                 .logoutUrl("/logout")
