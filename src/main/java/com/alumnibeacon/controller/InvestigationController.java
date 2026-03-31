@@ -2,6 +2,7 @@ package com.alumnibeacon.controller;
 
 import com.alumnibeacon.dto.CreateInvestigationRequest;
 import com.alumnibeacon.dto.InvestigationDto;
+import com.alumnibeacon.dto.OsintResultDto;
 import com.alumnibeacon.model.Investigation;
 import com.alumnibeacon.security.TenantDetails;
 import com.alumnibeacon.service.CreditService;
@@ -67,6 +68,9 @@ public class InvestigationController {
         InvestigationDto inv = investigationService.getById(id, td.tenantId());
         model.addAttribute("investigation", inv);
         model.addAttribute("creditsRemaining", creditService.getBalance(td.tenantId()));
+        // Parse OSINT result JSON into structured DTO for display
+        OsintResultDto osintResult = investigationService.parseOsintResult(inv.resultJson());
+        model.addAttribute("osintResult", osintResult);
         return "investigation/detail";
     }
 

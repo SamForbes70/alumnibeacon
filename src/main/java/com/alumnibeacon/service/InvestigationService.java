@@ -2,6 +2,7 @@ package com.alumnibeacon.service;
 
 import com.alumnibeacon.dto.CreateInvestigationRequest;
 import com.alumnibeacon.dto.InvestigationDto;
+import com.alumnibeacon.dto.OsintResultDto;
 import com.alumnibeacon.model.Investigation;
 import com.alumnibeacon.model.JobQueue;
 import com.alumnibeacon.repository.InvestigationRepository;
@@ -155,5 +156,19 @@ public class InvestigationService {
         investigationRepository.delete(inv);
         log.info("Deleted investigation {} for tenant {}", id, tenantId);
     }
+    /**
+     * Parse the raw resultJson string into a structured OsintResultDto.
+     * Returns null if resultJson is null/blank or cannot be parsed.
+     */
+    public OsintResultDto parseOsintResult(String resultJson) {
+        if (resultJson == null || resultJson.isBlank()) return null;
+        try {
+            return objectMapper.readValue(resultJson, OsintResultDto.class);
+        } catch (Exception e) {
+            log.warn("Could not parse OSINT result JSON: {}", e.getMessage());
+            return null;
+        }
+    }
+
 
 }

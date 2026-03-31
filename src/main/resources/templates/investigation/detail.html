@@ -66,15 +66,263 @@
         </div>
 
 
-        <!-- Results (when completed) -->
-        <div th:if="${investigation.status == 'COMPLETED' and investigation.resultJson != null}">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h3 class="font-serif text-xl text-beacon-charcoal mb-6">Search Results</h3>
-                <div class="bg-beacon-cream rounded-lg p-4">
-                    <pre class="text-sm text-gray-700 whitespace-pre-wrap" th:text="${investigation.resultJson}"></pre>
+
+        <!-- ── Structured Results (when completed) ─────────────────────────── -->
+        <div th:if="${investigation.status == 'COMPLETED'}">
+
+            <!-- Mock / AI-only warning -->
+            <div th:if="${osintResult != null and osintResult.mockResult}"
+                 class="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-6 flex items-start gap-3">
+                <span class="text-amber-500 text-xl mt-0.5">⚠️</span>
+                <div>
+                    <p class="font-semibold text-amber-800">AI Estimate Only — Low Confidence</p>
+                    <p class="text-amber-700 text-sm mt-1">No real data sources were queried. Results are AI-generated estimates and may be inaccurate. Configure OSINT API keys for verified data.</p>
                 </div>
             </div>
+
+            <!-- No result parsed fallback -->
+            <div th:if="${osintResult == null and investigation.resultJson != null}"
+                 class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-6">
+                <h3 class="font-serif text-xl text-beacon-charcoal mb-4">Raw Results</h3>
+                <div class="bg-beacon-cream rounded-lg p-4">
+                    <pre class="text-sm text-gray-700 whitespace-pre-wrap font-mono" th:text="${investigation.resultJson}"></pre>
+                </div>
+            </div>
+
+            <!-- Structured results card -->
+            <div th:if="${osintResult != null}" class="space-y-6">
+
+                <!-- ── Contact Information ──────────────────────────────────── -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                    <h3 class="font-serif text-xl text-beacon-charcoal mb-6 flex items-center gap-2">
+                        <span>📋</span> Contact Information
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <!-- Email -->
+                        <div class="flex items-start gap-3 p-4 rounded-lg"
+                             th:classappend="${osintResult.foundEmail != null} ? 'bg-green-50 border border-green-100' : 'bg-gray-50 border border-gray-100'">
+                            <span class="text-lg mt-0.5">📧</span>
+                            <div class="min-w-0">
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</p>
+                                <p th:if="${osintResult.foundEmail != null}"
+                                   class="text-sm font-semibold text-beacon-charcoal mt-1 break-all"
+                                   th:text="${osintResult.foundEmail}">—</p>
+                                <p th:if="${osintResult.foundEmail == null}"
+                                   class="text-sm text-gray-400 mt-1 italic">Not found</p>
+                            </div>
+                        </div>
+
+                        <!-- Phone -->
+                        <div class="flex items-start gap-3 p-4 rounded-lg"
+                             th:classappend="${osintResult.foundPhone != null} ? 'bg-green-50 border border-green-100' : 'bg-gray-50 border border-gray-100'">
+                            <span class="text-lg mt-0.5">📱</span>
+                            <div class="min-w-0">
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</p>
+                                <p th:if="${osintResult.foundPhone != null}"
+                                   class="text-sm font-semibold text-beacon-charcoal mt-1"
+                                   th:text="${osintResult.foundPhone}">—</p>
+                                <p th:if="${osintResult.foundPhone == null}"
+                                   class="text-sm text-gray-400 mt-1 italic">Not found</p>
+                            </div>
+                        </div>
+
+                        <!-- Address -->
+                        <div class="flex items-start gap-3 p-4 rounded-lg"
+                             th:classappend="${osintResult.foundAddress != null} ? 'bg-green-50 border border-green-100' : 'bg-gray-50 border border-gray-100'">
+                            <span class="text-lg mt-0.5">🏠</span>
+                            <div class="min-w-0">
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Address</p>
+                                <p th:if="${osintResult.foundAddress != null}"
+                                   class="text-sm font-semibold text-beacon-charcoal mt-1"
+                                   th:text="${osintResult.foundAddress}">—</p>
+                                <p th:if="${osintResult.foundAddress == null}"
+                                   class="text-sm text-gray-400 mt-1 italic">Not found</p>
+                            </div>
+                        </div>
+
+                        <!-- Employer -->
+                        <div class="flex items-start gap-3 p-4 rounded-lg"
+                             th:classappend="${osintResult.foundEmployer != null} ? 'bg-green-50 border border-green-100' : 'bg-gray-50 border border-gray-100'">
+                            <span class="text-lg mt-0.5">💼</span>
+                            <div class="min-w-0">
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Employer</p>
+                                <p th:if="${osintResult.foundEmployer != null}"
+                                   class="text-sm font-semibold text-beacon-charcoal mt-1"
+                                   th:text="${osintResult.foundEmployer}">—</p>
+                                <p th:if="${osintResult.foundEmployer == null}"
+                                   class="text-sm text-gray-400 mt-1 italic">Not found</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ── Social Media ─────────────────────────────────────────── -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                    <h3 class="font-serif text-xl text-beacon-charcoal mb-6 flex items-center gap-2">
+                        <span>🔗</span> Social Media Profiles
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <!-- LinkedIn -->
+                        <div class="flex items-start gap-3 p-4 rounded-lg"
+                             th:classappend="${osintResult.foundLinkedin != null} ? 'bg-blue-50 border border-blue-100' : 'bg-gray-50 border border-gray-100'">
+                            <span class="text-lg mt-0.5">💼</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">LinkedIn</p>
+                                <a th:if="${osintResult.foundLinkedin != null}"
+                                   th:href="${osintResult.foundLinkedin}"
+                                   th:text="${osintResult.foundLinkedin}"
+                                   target="_blank" rel="noopener noreferrer"
+                                   class="text-sm font-semibold text-blue-600 hover:text-blue-800 mt-1 block break-all">—</a>
+                                <p th:if="${osintResult.foundLinkedin == null}"
+                                   class="text-sm text-gray-400 mt-1 italic">Not found</p>
+                            </div>
+                        </div>
+
+                        <!-- Facebook -->
+                        <div class="flex items-start gap-3 p-4 rounded-lg"
+                             th:classappend="${osintResult.foundFacebook != null} ? 'bg-blue-50 border border-blue-100' : 'bg-gray-50 border border-gray-100'">
+                            <span class="text-lg mt-0.5">📘</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Facebook</p>
+                                <a th:if="${osintResult.foundFacebook != null}"
+                                   th:href="${osintResult.foundFacebook}"
+                                   th:text="${osintResult.foundFacebook}"
+                                   target="_blank" rel="noopener noreferrer"
+                                   class="text-sm font-semibold text-blue-600 hover:text-blue-800 mt-1 block break-all">—</a>
+                                <p th:if="${osintResult.foundFacebook == null}"
+                                   class="text-sm text-gray-400 mt-1 italic">Not found</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ── Summary ──────────────────────────────────────────────── -->
+                <div th:if="${osintResult.summary != null}"
+                     class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                    <h3 class="font-serif text-xl text-beacon-charcoal mb-4 flex items-center gap-2">
+                        <span>📝</span> Investigation Summary
+                    </h3>
+                    <p class="text-gray-700 leading-relaxed" th:text="${osintResult.summary}">Summary text</p>
+                </div>
+
+                <!-- ── Confidence Breakdown ─────────────────────────────────── -->
+                <div th:if="${osintResult.confidenceBreakdown != null and !osintResult.confidenceBreakdown.isEmpty()}"
+                     class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                    <h3 class="font-serif text-xl text-beacon-charcoal mb-6 flex items-center gap-2">
+                        <span>📊</span> Confidence Breakdown
+                    </h3>
+                    <div class="space-y-4">
+
+                        <!-- Name Match -->
+                        <div th:if="${osintResult.confidenceBreakdown['name_match'] != null}">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm font-medium text-gray-600">Name Match</span>
+                                <span class="text-sm font-bold text-beacon-charcoal"
+                                      th:text="${osintResult.confidenceBreakdown['name_match']} + '/25'">0/25</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full"
+                                     style="background: #9C2A6B;"
+                                     th:style="'background: #9C2A6B; width: ' + ${osintResult.confidenceBreakdown['name_match'] * 4} + '%'"></div>
+                            </div>
+                        </div>
+
+                        <!-- Location Match -->
+                        <div th:if="${osintResult.confidenceBreakdown['location_match'] != null}">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm font-medium text-gray-600">Location Match</span>
+                                <span class="text-sm font-bold text-beacon-charcoal"
+                                      th:text="${osintResult.confidenceBreakdown['location_match']} + '/25'">0/25</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full"
+                                     th:style="'background: #4A7C9D; width: ' + ${osintResult.confidenceBreakdown['location_match'] * 4} + '%'"></div>
+                            </div>
+                        </div>
+
+                        <!-- Professional Match -->
+                        <div th:if="${osintResult.confidenceBreakdown['professional_match'] != null}">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm font-medium text-gray-600">Professional Match</span>
+                                <span class="text-sm font-bold text-beacon-charcoal"
+                                      th:text="${osintResult.confidenceBreakdown['professional_match']} + '/25'">0/25</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full"
+                                     th:style="'background: #2E5F4A; width: ' + ${osintResult.confidenceBreakdown['professional_match'] * 4} + '%'"></div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Verified -->
+                        <div th:if="${osintResult.confidenceBreakdown['contact_verified'] != null}">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm font-medium text-gray-600">Contact Verified</span>
+                                <span class="text-sm font-bold text-beacon-charcoal"
+                                      th:text="${osintResult.confidenceBreakdown['contact_verified']} + '/25'">0/25</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full"
+                                     th:style="'background: #C9A66B; width: ' + ${osintResult.confidenceBreakdown['contact_verified'] * 4} + '%'"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ── Recommended Actions ──────────────────────────────────── -->
+                <div th:if="${osintResult.hasRecommendedActions()}"
+                     class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                    <h3 class="font-serif text-xl text-beacon-charcoal mb-4 flex items-center gap-2">
+                        <span>✅</span> Recommended Actions
+                    </h3>
+                    <ul class="space-y-2">
+                        <li th:each="action : ${osintResult.recommendedActions}"
+                            class="flex items-start gap-2 text-sm text-gray-700">
+                            <span class="text-beacon-magenta mt-0.5 flex-shrink-0">→</span>
+                            <span th:text="${action}">Action</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- ── Privacy Flags ────────────────────────────────────────── -->
+                <div th:if="${osintResult.hasPrivacyFlags()}"
+                     class="bg-orange-50 border border-orange-200 rounded-xl p-6">
+                    <h3 class="font-serif text-lg text-orange-800 mb-4 flex items-center gap-2">
+                        <span>🔒</span> Privacy Flags
+                    </h3>
+                    <ul class="space-y-2">
+                        <li th:each="flag : ${osintResult.privacyFlags}"
+                            class="flex items-start gap-2 text-sm text-orange-700">
+                            <span class="flex-shrink-0">⚠️</span>
+                            <span th:text="${flag}">Flag</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- ── Data Sources ─────────────────────────────────────────── -->
+                <div th:if="${osintResult.hasSources()}"
+                     class="bg-gray-50 rounded-xl border border-gray-200 p-6">
+                    <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Data Sources</h3>
+                    <ul class="space-y-1">
+                        <li th:each="source : ${osintResult.sources}"
+                            class="text-xs text-gray-500 flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0"></span>
+                            <span th:text="${source}">Source</span>
+                        </li>
+                    </ul>
+                    <p class="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-200">
+                        This report was generated in compliance with the Australian Privacy Act 1988.
+                        Data is provided for legitimate alumni reconnection purposes only.
+                    </p>
+                </div>
+
+            </div>
         </div>
+
 
         <!-- Error state -->
         <div th:if="${investigation.status == 'FAILED'}">
