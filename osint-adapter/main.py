@@ -772,3 +772,183 @@ if __name__ == "__main__":
     ])
     logger.info(f"August OSINT Adapter v3.0 | {tiers}/5 tiers configured | port={port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+# ── Agent Zero A2A Bridge ─────────────────────────────────────────────────────
+
+AGENT_ZERO_URL = os.environ.get("AGENT_ZERO_URL", "http://localhost")
+AGENT_ZERO_TIMEOUT = int(os.environ.get("AGENT_ZERO_TIMEOUT", "900"))  # 15 min
+
+
+def build_investigation_prompt(req: SearchRequest) -> str:
+    """Build the investigation prompt for the alumnibeacon-osint Agent Zero profile."""
+    parts = [f"Investigate the following subject and return ONLY a valid JSON result in the AlumniBeacon schema."]
+    parts.append("")
+    parts.append("SEED DATA:")
+    parts.append(f"- Full name: {req.name}")
+    if req.dob:
+        parts.append(f"- Date of birth: {req.dob}")
+    if req.graduation_year:
+        parts.append(f"- Graduation year: {req.graduation_year}")
+    if req.last_known_address:
+        parts.append(f"- Last known address: {req.last_known_address}")
+    if req.last_known_employer:
+        parts.append(f"- Last known employer: {req.last_known_employer}")
+    if req.last_known_email:
+        parts.append(f"- Last known email (unverified): {req.last_known_email}")
+    if req.last_known_phone:
+        parts.append(f"- Last known phone (unverified): {req.last_known_phone}")
+    if req.notes:
+        parts.append(f"- Notes: {req.notes}")
+    parts.append("")
+    parts.append("Follow your 7-step investigation workflow. Return ONLY the JSON object when complete — no markdown, no prose, no backticks.")
+    return "\n".join(parts)
+
+
+def extract_json_from_text(text: str) -> dict:
+    """Extract a JSON object from agent response text.
+    Handles cases where the agent wraps JSON in prose or markdown."""
+    if not text:
+        raise ValueError("Empty response from agent")
+
+    # Try direct parse first
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Try to find JSON object in text (handles markdown code blocks)
+    # Remove markdown code fences
+    text_clean = re.sub(r'```(?:json)?\s*', '', text)
+    text_clean = re.sub(r'```\s*$', '', text_clean, flags=re.MULTILINE)
+    try:
+        return json.loads(text_clean.strip())
+    except json.JSONDecodeError:
+        pass
+
+    # Find first { ... } block
+    start = text.find('{')
+    end = text.rfind('}')
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"Could not extract JSON from agent response (length={len(text)})")
+
+
+async def call_agent_zero_a2a(prompt: str, investigation_id: str) -> dict:
+    """Call Agent Zero via A2A protocol and return parsed JSON result."""
+    import uuid as uuid_mod
+
+    base_url = AGENT_ZERO_URL.rstrip('/')
+    a2a_url = f"{base_url}/a2a"
+
+    # Build A2A message
+    message_id = str(uuid_mod.uuid4())
+    context_id = f"alumnibeacon-{investigation_id}-{message_id[:8]}"
+
+    a2a_message = {
+        "role": "user",
+        "parts": [{"kind": "text", "text": prompt}],
+        "kind": "message",
+        "message_id": message_id,
+        "context_id": context_id
+    }
+
+    logger.info(f"Calling Agent Zero A2A at {a2a_url} for investigation {investigation_id}")
+
+    async with httpx.AsyncClient(timeout=AGENT_ZERO_TIMEOUT) as client:
+        # Step 1: Send message to A2A endpoint
+        resp = await client.post(
+            a2a_url,
+            json=a2a_message,
+            headers={"Content-Type": "application/json"}
+        )
+        resp.raise_for_status()
+        task_data = resp.json()
+        logger.info(f"A2A task created: {json.dumps(task_data)[:200]}")
+
+        # Step 2: Extract task_id
+        task_id = None
+        if isinstance(task_data, dict):
+            task_id = (task_data.get("result", {}) or {}).get("id") or task_data.get("id")
+
+        if not task_id:
+            # Some A2A implementations return result inline
+            history = (task_data.get("result", {}) or {}).get("history", [])
+            if history:
+                last_parts = history[-1].get("parts", [])
+                text = "\n".join(p.get("text", "") for p in last_parts if p.get("kind") == "text")
+                if text:
+                    return extract_json_from_text(text)
+            raise ValueError(f"No task_id in A2A response: {str(task_data)[:300]}")
+
+        # Step 3: Poll until completed
+        poll_url = f"{a2a_url}/tasks/{task_id}"
+        max_polls = 180  # 15 min at 5s intervals
+        for attempt in range(max_polls):
+            await asyncio.sleep(5)
+            poll_resp = await client.get(poll_url)
+            poll_resp.raise_for_status()
+            poll_data = poll_resp.json()
+
+            result = poll_data.get("result", poll_data)
+            status = result.get("status", {})
+            state = status.get("state", "unknown") if isinstance(status, dict) else str(status)
+
+            logger.info(f"A2A poll {attempt + 1}/{max_polls}: task={task_id} state={state}")
+
+            if state in ("completed", "failed", "canceled"):
+                if state != "completed":
+                    raise ValueError(f"Agent Zero task {state}: {result.get('status', {}).get('message', '')}")
+
+                # Step 4: Extract text from history
+                history = result.get("history", [])
+                if not history:
+                    raise ValueError("Agent Zero returned no history")
+
+                last_parts = history[-1].get("parts", [])
+                text = "\n".join(p.get("text", "") for p in last_parts if p.get("kind") == "text")
+                logger.info(f"Agent Zero response text (length={len(text)}): {text[:200]}")
+                return extract_json_from_text(text)
+
+        raise TimeoutError(f"Agent Zero task {task_id} did not complete within {AGENT_ZERO_TIMEOUT}s")
+
+
+@app.post("/agent-zero/investigate")
+async def agent_zero_investigate(req: SearchRequest):
+    """Investigate using the alumnibeacon-osint Agent Zero profile via A2A."""
+    logger.info(f"Agent Zero investigation: {req.name} (id={req.investigation_id})")
+
+    prompt = build_investigation_prompt(req)
+    inv_id = req.investigation_id or "unknown"
+
+    try:
+        result = await call_agent_zero_a2a(prompt, inv_id)
+    except Exception as e:
+        logger.error(f"Agent Zero A2A failed: {e}")
+        raise
+
+    # Inject engine field
+    result["engine"] = "agent-zero"
+    result.setdefault("mode", "live")
+
+    return result
+
+
+@app.get("/agent-zero/health")
+async def agent_zero_health():
+    """Check Agent Zero A2A connectivity."""
+    base_url = AGENT_ZERO_URL.rstrip('/')
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(f"{base_url}/.well-known/agent.json")
+            if resp.status_code == 200:
+                card = resp.json()
+                return {"status": "ok", "agent": card.get("name", "unknown"), "url": base_url}
+            return {"status": "error", "code": resp.status_code, "url": base_url}
+    except Exception as e:
+        return {"status": "unreachable", "error": str(e), "url": base_url}

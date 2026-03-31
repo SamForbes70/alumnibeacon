@@ -1,6 +1,6 @@
 package com.alumnibeacon.service;
 
-import com.alumnibeacon.adapter.AugustOsintAdapter;
+import com.alumnibeacon.adapter.OsintAdapterRouter;
 import com.alumnibeacon.model.Investigation;
 import com.alumnibeacon.model.JobQueue;
 import com.alumnibeacon.repository.InvestigationRepository;
@@ -21,7 +21,7 @@ public class JobQueueScheduler {
 
     private final JobQueueRepository jobQueueRepository;
     private final InvestigationRepository investigationRepository;
-    private final AugustOsintAdapter augustAdapter;
+    private final OsintAdapterRouter osintRouter;
 
     /**
      * Main queue processor - runs every 5 seconds.
@@ -31,7 +31,8 @@ public class JobQueueScheduler {
     @Scheduled(fixedDelay = 5000)
     @Transactional
     public void processQueue() {
-        // Step 1: Recover any jobs stuck in PROCESSING for >5 minutes
+        // Step 1: Recover any jobs stuck in PROCESSING
+        // Threshold is 20 min to accommodate Agent Zero deep investigations (~15 min)
         recoverStuckJobs();
 
         // Step 2: Pick up next PENDING job
@@ -39,16 +40,18 @@ public class JobQueueScheduler {
         if (pending.isEmpty()) return;
 
         JobQueue job = pending.get(0);
-        log.info("Processing job {} for investigation: {}", job.getId(), job.getInvestigationId());
+        log.info("Processing job {} for investigation: {} (engine={})",
+            job.getId(), job.getInvestigationId(), osintRouter.getEngine());
         processJobSynchronously(job);
     }
 
     /**
-     * Reset jobs stuck in PROCESSING for more than 5 minutes back to PENDING.
-     * This handles cases where the adapter call failed silently.
+     * Reset jobs stuck in PROCESSING back to PENDING.
+     * Threshold: 20 minutes — accommodates Agent Zero deep investigations (~15 min).
+     * Python adapter jobs that genuinely time out will be caught by the 2-min WebClient timeout.
      */
     private void recoverStuckJobs() {
-        LocalDateTime stuckThreshold = LocalDateTime.now().minusMinutes(5);
+        LocalDateTime stuckThreshold = LocalDateTime.now().minusMinutes(20);
         List<JobQueue> stuckJobs = jobQueueRepository.findStuckJobs(stuckThreshold);
         if (!stuckJobs.isEmpty()) {
             log.warn("Found {} stuck job(s) - resetting to PENDING", stuckJobs.size());
@@ -108,19 +111,21 @@ public class JobQueueScheduler {
         });
 
         try {
-            log.info("Calling OSINT adapter for investigation {} (attempt {}/{})",
-                job.getInvestigationId(), job.getAttempts(), job.getMaxAttempts());
+            log.info("Routing OSINT investigation {} via {} engine (attempt {}/{})",
+                job.getInvestigationId(), osintRouter.getEngine(),
+                job.getAttempts(), job.getMaxAttempts());
 
-            // SYNCHRONOUS call - .block() waits for result on current thread
+            // SYNCHRONOUS call via router - .block() waits for result on current thread
             // @Transactional works correctly here
-            String resultJson = augustAdapter.search(job.getPayloadJson()).block();
+            String resultJson = osintRouter.route(job.getPayloadJson()).block();
 
             if (resultJson == null || resultJson.isBlank()) {
-                throw new RuntimeException("Adapter returned empty response");
+                throw new RuntimeException("OSINT router returned empty response");
             }
 
             // SUCCESS
-            log.info("OSINT search completed for investigation {}", job.getInvestigationId());
+            log.info("OSINT investigation completed for {} (engine={})",
+                job.getInvestigationId(), osintRouter.getEngine());
             job.setStatus(JobQueue.Status.COMPLETED);
             job.setResultJson(resultJson);
             job.setCompletedAt(LocalDateTime.now());
@@ -131,21 +136,25 @@ public class JobQueueScheduler {
                 inv.setResultJson(resultJson);
                 inv.setCompletedAt(LocalDateTime.now());
 
-                // Extract confidence score
+                // Extract confidence score and engine from result
                 try {
                     var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                     var node = mapper.readTree(resultJson);
                     if (node.has("confidence_score")) {
                         inv.setConfidenceScore(node.get("confidence_score").asInt());
                     }
+                    if (node.has("engine")) {
+                        log.info("Investigation {} completed via engine: {}",
+                            inv.getId(), node.get("engine").asText());
+                    }
                 } catch (Exception e) {
-                    log.warn("Could not parse confidence score from result", e);
+                    log.warn("Could not parse result metadata", e);
                 }
                 investigationRepository.save(inv);
             });
 
         } catch (Exception e) {
-            log.error("OSINT search failed for investigation {}: {}",
+            log.error("OSINT investigation failed for {}: {}",
                 job.getInvestigationId(), e.getMessage());
 
             if (job.getAttempts() >= job.getMaxAttempts()) {

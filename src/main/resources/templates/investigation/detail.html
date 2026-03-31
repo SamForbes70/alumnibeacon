@@ -89,8 +89,26 @@
                 </div>
             </div>
 
+
             <!-- Structured results card -->
             <div th:if="${osintResult != null}" class="space-y-6">
+
+                <!-- ── Engine Badge ──────────────────────────────────────── -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span th:if="${osintResult.engine != null}"
+                              th:class="'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ' + ${osintResult.engineBadgeClass()}"
+                              th:text="${osintResult.engineLabel()}">⚡ Standard</span>
+                        <span th:if="${osintResult.engine == null}"
+                              class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">⚡ Standard</span>
+                        <span th:if="${osintResult.toolCallsUsed != null}"
+                              class="text-xs text-gray-400"
+                              th:text="${osintResult.toolCallsUsed + '/30 tool calls'}"></span>
+                    </div>
+                    <span class="text-xs text-gray-400"
+                          th:if="${investigation.completedAt != null}"
+                          th:text="'Completed ' + ${#temporals.format(investigation.completedAt, 'dd MMM yyyy HH:mm')}"></span>
+                </div>
 
                 <!-- ── Contact Information ──────────────────────────────────── -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
