@@ -41,145 +41,225 @@
         </div>
     </div>
 
-    <!-- Filter Bar -->
-    <div class="flex items-center gap-3 mb-4">
-        <div class="flex-1">
-            <input type="text" placeholder="Search by name..."
-                   class="w-full px-3 py-2 rounded-lg border text-sm"
+    <!--
+        Filter Bar — wrapped in a <form> so HTMX serialises BOTH inputs together.
+        hx-get        : submits to /investigations as a GET request
+        hx-target     : replaces the #investigation-table div
+        hx-select     : extracts only #investigation-table from the full-page response
+                        (avoids needing a separate fragment endpoint)
+        hx-push-url   : updates the browser URL so filters are bookmarkable
+        hx-trigger    : fires on any input change (keyup delay for search, change for select)
+    -->
+    <form id="filter-form"
+          hx-get="/investigations"
+          hx-target="#investigation-table"
+          hx-select="#investigation-table"
+          hx-push-url="true"
+          hx-trigger="keyup changed delay:350ms from:#search-input, change from:#status-select"
+          class="flex items-center gap-3 mb-4">
+
+        <!-- Hidden page reset: when filter changes, go back to page 0 -->
+        <input type="hidden" name="page" value="0" id="filter-page-input"/>
+
+        <!-- Search input -->
+        <div class="flex-1 relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style="color: #9CA3AF;"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input id="search-input"
+                   type="text"
+                   name="search"
+                   placeholder="Search by name..."
+                   th:value="${search}"
+                   class="w-full pl-9 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
                    style="border-color: #E5E7EB; color: #1C2526;"
-                   hx-get="/investigations"
-                   hx-trigger="keyup changed delay:300ms"
-                   hx-target="#investigation-table"
-                   name="search"/>
+                   autocomplete="off"/>
         </div>
-        <select class="px-3 py-2 rounded-lg border text-sm" style="border-color: #E5E7EB; color: #1C2526;"
-                hx-get="/investigations"
-                hx-trigger="change"
-                hx-target="#investigation-table"
-                name="status">
-            <option value="">All Status</option>
-            <option value="PENDING">Pending</option>
-            <option value="PROCESSING">Processing</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="FAILED">Failed</option>
+
+        <!-- Status filter -->
+        <select id="status-select"
+                name="status"
+                class="px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
+                style="border-color: #E5E7EB; color: #1C2526;">
+            <option value="" th:selected="${status == ''}">All Status</option>
+            <option value="PENDING"    th:selected="${status == 'PENDING'}">Pending</option>
+            <option value="PROCESSING" th:selected="${status == 'PROCESSING'}">Processing</option>
+            <option value="COMPLETED"  th:selected="${status == 'COMPLETED'}">Completed</option>
+            <option value="FAILED"     th:selected="${status == 'FAILED'}">Failed</option>
         </select>
-    </div>
+
+        <!-- Clear filters button (only shown when filters are active) -->
+        <a th:if="${search != '' or status != ''}"
+           href="/investigations"
+           class="px-3 py-2 rounded-lg border text-sm transition-colors hover:bg-gray-50"
+           style="border-color: #E5E7EB; color: #6B7280;"
+           title="Clear filters">✕ Clear</a>
+
+    </form>
 
     <!-- Investigation Table -->
-    <div id="investigation-table" class="rounded-xl border overflow-hidden" style="border-color: #E5E7EB;">
-        <table class="w-full">
-            <thead style="background: #F9FAFB;">
-                <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">SUBJECT</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">STATUS</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">CONFIDENCE</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">CREATED</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">ACTIONS</th>
-                </tr>
-            </thead>
-            <tbody th:fragment="rows">
-                <!-- Empty state -->
-                <tr th:if="${#lists.isEmpty(investigations)}">
-                    <td colspan="5" class="px-4 py-12 text-center">
-                        <div class="flex flex-col items-center">
-                            <svg class="w-12 h-12 mb-3" style="color: #D1D5DB;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                            <p class="text-sm font-medium" style="color: #6B7280;">No investigations yet</p>
-                            <p class="text-xs mt-1" style="color: #9CA3AF;">Create your first investigation to get started</p>
-                            <a href="/investigations/new" class="mt-3 text-sm font-medium" style="color: #9C2A6B;">Create Investigation →</a>
-                        </div>
-                    </td>
-                </tr>
+    <div id="investigation-table">
 
-                <!-- Investigation rows -->
-                <tr th:each="inv : ${investigations}"
-                    class="border-t hover:bg-gray-50 cursor-pointer transition-colors"
-                    style="border-color: #F3F4F6;"
-                    th:onclick="|window.location='/investigations/' + ${inv.id}|">
-
-                    <!-- Subject -->
-                    <td class="px-4 py-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                                 style="background: #9C2A6B;"
-                                 th:text="${#strings.substring(inv.subjectName, 0, 1).toUpperCase()}">A</div>
-                            <div>
-                                <p class="text-sm font-medium" style="color: #1C2526;" th:text="${inv.subjectName}">John Smith</p>
-                                <p class="text-xs" style="color: #9CA3AF;" th:text="${inv.subjectDob != null ? inv.subjectDob : 'DOB unknown'}">1985</p>
-                            </div>
-                        </div>
-                    </td>
-
-                    <!-- Status -->
-                    <td class="px-4 py-3">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                              th:classappend="${inv.status == 'COMPLETED'} ? 'bg-green-100 text-green-800' :
-                                              (${inv.status == 'PROCESSING'} ? 'bg-yellow-100 text-yellow-800' :
-                                              (${inv.status == 'FAILED'} ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))"
-                              th:text="${inv.status}">PENDING</span>
-
-                        <!-- Progress bar for processing -->
-                        <div th:if="${inv.status == 'PROCESSING'}" class="mt-1 w-24 bg-gray-200 rounded-full h-1">
-                            <div class="h-1 rounded-full" style="background: #C9A66B; width: 45%;"></div>
-                        </div>
-                    </td>
-
-                    <!-- Confidence -->
-                    <td class="px-4 py-3">
-                        <div th:if="${inv.confidenceScore != null}" class="flex items-center gap-2">
-                            <div class="w-16 bg-gray-200 rounded-full h-2">
-                                <div class="h-2 rounded-full"
-                                     th:style="|background: ${inv.confidenceScore >= 70 ? '#059669' : (inv.confidenceScore >= 40 ? '#D97706' : '#DC2626')}; width: ${inv.confidenceScore}%;|"></div>
-                            </div>
-                            <span class="text-sm font-medium" style="color: #1C2526;" th:text="${inv.confidenceScore + '%'}">72%</span>
-                        </div>
-                        <span th:unless="${inv.confidenceScore != null}" class="text-xs" style="color: #9CA3AF;">—</span>
-                    </td>
-
-                    <!-- Created -->
-                    <td class="px-4 py-3">
-                        <span class="text-sm" style="color: #6B7280;"
-                              th:text="${#temporals.format(inv.createdAt, 'dd MMM yyyy')}">01 Jan 2026</span>
-                    </td>
-
-                    <!-- Actions -->
-                    <td class="px-4 py-3">
-                        <div class="flex items-center gap-2" onclick="event.stopPropagation()">
-                            <a th:href="'/investigations/' + ${inv.id}"
-                               class="text-xs px-2 py-1 rounded border transition-colors hover:bg-gray-50"
-                               style="color: #6B7280; border-color: #E5E7EB;">View</a>
-
-                            <a th:if="${inv.status == 'COMPLETED'}"
-                               th:href="'/investigations/' + ${inv.id} + '/report'"
-                               class="text-xs px-2 py-1 rounded border transition-colors hover:opacity-90"
-                               style="color: #9C2A6B; border-color: #9C2A6B;">PDF</a>
-
-                            <button th:if="${inv.status == 'FAILED'}"
-                                    th:onclick="|rerunInvestigation('${inv.id}')|" 
-                                    class="text-xs px-2 py-1 rounded border transition-colors hover:bg-gray-50"
-                                    style="color: #D97706; border-color: #D97706;">Retry</button>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Pagination -->
-    <div th:if="${totalPages > 1}" class="flex items-center justify-between mt-4">
-        <p class="text-sm" style="color: #6B7280;"
-           th:text="|Showing ${currentPage * pageSize + 1}-${(currentPage + 1) * pageSize} of ${totalCount}|">Showing 1-20 of 100</p>
-        <div class="flex gap-2">
-            <a th:if="${currentPage > 0}"
-               th:href="'/investigations?page=' + ${currentPage - 1}"
-               class="px-3 py-1 rounded border text-sm" style="border-color: #E5E7EB; color: #6B7280;">Previous</a>
-            <a th:if="${currentPage < totalPages - 1}"
-               th:href="'/investigations?page=' + ${currentPage + 1}"
-               class="px-3 py-1 rounded border text-sm" style="border-color: #E5E7EB; color: #6B7280;">Next</a>
+        <!-- Active filter indicator -->
+        <div th:if="${search != '' or status != ''}"
+             class="mb-3 flex items-center gap-2 text-sm" style="color: #6B7280;">
+            <span>Showing results for</span>
+            <span th:if="${search != ''}" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                  th:text="'name: ' + ${search}"></span>
+            <span th:if="${status != ''}" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                  th:text="'status: ' + ${status}"></span>
+            <span th:text="'(' + ${totalCount} + ' total, ' + ${#lists.size(investigations) + (currentPage * pageSize)} + '–' + ${#lists.size(investigations) + (currentPage * pageSize)} + ' shown)'"></span>
         </div>
-    </div>
+
+        <div class="rounded-xl border overflow-hidden" style="border-color: #E5E7EB;">
+            <table class="w-full">
+                <thead style="background: #F9FAFB;">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">SUBJECT</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">STATUS</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">CONFIDENCE</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">CREATED</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody th:fragment="rows">
+                    <!-- Empty state -->
+                    <tr th:if="${#lists.isEmpty(investigations)}">
+                        <td colspan="5" class="px-4 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <svg class="w-12 h-12 mb-3" style="color: #D1D5DB;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                <p class="text-sm font-medium" style="color: #6B7280;"
+                                   th:text="${search != '' or status != ''} ? 'No investigations match your filters' : 'No investigations yet'">No investigations yet</p>
+                                <p class="text-xs mt-1" style="color: #9CA3AF;"
+                                   th:text="${search != '' or status != ''} ? 'Try adjusting your search or clearing filters' : 'Create your first investigation to get started'">Create your first investigation to get started</p>
+                                <a th:if="${search == '' and status == ''}"
+                                   href="/investigations/new" class="mt-3 text-sm font-medium" style="color: #9C2A6B;">Create Investigation →</a>
+                                <a th:if="${search != '' or status != ''}"
+                                   href="/investigations" class="mt-3 text-sm font-medium" style="color: #9C2A6B;">Clear filters →</a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Investigation rows -->
+                    <tr th:each="inv : ${investigations}"
+                        class="border-t hover:bg-gray-50 cursor-pointer transition-colors"
+                        style="border-color: #F3F4F6;"
+                        th:data-id="${inv.id}" onclick="window.location='/investigations/'+this.dataset.id">
+
+                        <!-- Subject -->
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                                     style="background: #9C2A6B;"
+                                     th:text="${#strings.substring(inv.subjectName, 0, 1).toUpperCase()}">A</div>
+                                <div>
+                                    <p class="text-sm font-medium" style="color: #1C2526;" th:text="${inv.subjectName}">John Smith</p>
+                                    <p class="text-xs" style="color: #9CA3AF;" th:text="${inv.subjectDob != null ? inv.subjectDob : 'DOB unknown'}">1985</p>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Status -->
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                  th:classappend="${inv.status == 'COMPLETED'} ? 'bg-green-100 text-green-800' :
+                                                  (${inv.status == 'PROCESSING'} ? 'bg-yellow-100 text-yellow-800' :
+                                                  (${inv.status == 'FAILED'} ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))"
+                                  th:text="${inv.status}">PENDING</span>
+
+                            <!-- Progress bar for processing -->
+                            <div th:if="${inv.status == 'PROCESSING'}" class="mt-1 w-24 bg-gray-200 rounded-full h-1">
+                                <div class="h-1 rounded-full" style="background: #C9A66B; width: 45%;"></div>
+                            </div>
+                        </td>
+
+                        <!-- Confidence -->
+                        <td class="px-4 py-3">
+                            <div th:if="${inv.confidenceScore != null}" class="flex items-center gap-2">
+                                <div class="w-16 bg-gray-200 rounded-full h-2">
+                                    <div class="h-2 rounded-full"
+                                         th:style="|background: ${inv.confidenceScore >= 70 ? '#059669' : (inv.confidenceScore >= 40 ? '#D97706' : '#DC2626')}; width: ${inv.confidenceScore}%;|"></div>
+                                </div>
+                                <span class="text-sm font-medium" style="color: #1C2526;" th:text="${inv.confidenceScore + '%'}">72%</span>
+                            </div>
+                            <span th:unless="${inv.confidenceScore != null}" class="text-xs" style="color: #9CA3AF;">—</span>
+                        </td>
+
+                        <!-- Created -->
+                        <td class="px-4 py-3">
+                            <span class="text-sm" style="color: #6B7280;"
+                                  th:text="${#temporals.format(inv.createdAt, 'dd MMM yyyy')}">01 Jan 2026</span>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                                <a th:href="'/investigations/' + ${inv.id}"
+                                   class="text-xs px-2 py-1 rounded border transition-colors hover:bg-gray-50"
+                                   style="color: #6B7280; border-color: #E5E7EB;">View</a>
+
+                                <a th:if="${inv.status == 'COMPLETED'}"
+                                   th:href="'/investigations/' + ${inv.id} + '/report'"
+                                   class="text-xs px-2 py-1 rounded border transition-colors hover:opacity-90"
+                                   style="color: #9C2A6B; border-color: #9C2A6B;">PDF</a>
+
+                                <button th:if="${inv.status == 'FAILED'}"
+                                        th:data-id="${inv.id}" onclick="event.stopPropagation();rerunInvestigation(this.dataset.id)"
+                                        class="text-xs px-2 py-1 rounded border transition-colors hover:bg-gray-50"
+                                        style="color: #D97706; border-color: #D97706;">Retry</button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div th:if="${totalPages > 1}" class="flex items-center justify-between mt-4">
+            <p class="text-sm" style="color: #6B7280;"
+               th:text="|Showing ${currentPage * pageSize + 1}–${currentPage * pageSize + #lists.size(investigations)} of ${totalCount}|">Showing 1–20 of 100</p>
+            <div class="flex items-center gap-1">
+
+                <!-- Previous -->
+                <a th:if="${currentPage > 0}"
+                   th:href="'/investigations?page=' + ${currentPage - 1} + '&search=' + ${search} + '&status=' + ${status}"
+                   class="px-3 py-1.5 rounded border text-sm transition-colors hover:bg-gray-50"
+                   style="border-color: #E5E7EB; color: #6B7280;">← Prev</a>
+                <span th:unless="${currentPage > 0}"
+                      class="px-3 py-1.5 rounded border text-sm opacity-40 cursor-not-allowed"
+                      style="border-color: #E5E7EB; color: #6B7280;">← Prev</span>
+
+                <!-- Page numbers (show up to 5 around current) -->
+                <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                          th:if="${i >= currentPage - 2 and i <= currentPage + 2}">
+                    <a th:if="${i != currentPage}"
+                       th:href="'/investigations?page=' + ${i} + '&search=' + ${search} + '&status=' + ${status}"
+                       th:text="${i + 1}"
+                       class="px-3 py-1.5 rounded border text-sm transition-colors hover:bg-gray-50"
+                       style="border-color: #E5E7EB; color: #6B7280;">1</a>
+                    <span th:if="${i == currentPage}"
+                          th:text="${i + 1}"
+                          class="px-3 py-1.5 rounded border text-sm font-semibold"
+                          style="border-color: #9C2A6B; color: #9C2A6B; background: #FDF2F8;">1</span>
+                </th:block>
+
+                <!-- Next -->
+                <a th:if="${currentPage < totalPages - 1}"
+                   th:href="'/investigations?page=' + ${currentPage + 1} + '&search=' + ${search} + '&status=' + ${status}"
+                   class="px-3 py-1.5 rounded border text-sm transition-colors hover:bg-gray-50"
+                   style="border-color: #E5E7EB; color: #6B7280;">Next →</a>
+                <span th:unless="${currentPage < totalPages - 1}"
+                      class="px-3 py-1.5 rounded border text-sm opacity-40 cursor-not-allowed"
+                      style="border-color: #E5E7EB; color: #6B7280;">Next →</span>
+            </div>
+        </div>
+
+    </div><!-- end #investigation-table -->
 
     <script>
         function rerunInvestigation(id) {

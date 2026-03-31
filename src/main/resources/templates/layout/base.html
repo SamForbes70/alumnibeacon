@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:fragment="layout(title, content)">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${pageTitle} + ' | AlumniBeacon'">AlumniBeacon</title>
+    <th:block th:replace="${title}"/>
     <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- HTMX -->
@@ -80,7 +81,7 @@
 
     <!-- Main content -->
     <main class="ml-64 flex-1 p-8">
-        <div th:replace="~{::content}"></div>
+        <th:block th:replace="${content}"/>
     </main>
 </div>
 

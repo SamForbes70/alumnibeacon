@@ -86,7 +86,6 @@
                 <h3 class="text-sm font-semibold mb-4" style="color: #1C2526;">Organisation Details</h3>
 
                 <form th:action="@{/admin/settings}" method="post">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
                     <div class="space-y-4">
                         <div>
@@ -146,7 +145,6 @@
                         <form th:if="${user.id != currentUserId}"
                               th:action="@{/admin/users/{id}/remove(id=${user.id})}" method="post"
                               onsubmit="return confirm('Remove this user?')">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                             <button type="submit"
                                     class="text-xs px-2 py-1 rounded border transition-colors hover:bg-red-50"
                                     style="color: #DC2626; border-color: #FCA5A5;">Remove</button>
