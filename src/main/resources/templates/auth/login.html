@@ -200,6 +200,14 @@
             Account created successfully. Please sign in.
         </div>
 
+        <!-- Password reset success alert -->
+        <div th:if="${param.reset}" class="alert-success">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20" style="flex-shrink:0;">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            Password reset successfully. Please sign in with your new password.
+        </div>
+
         <!-- Form -->
         <form th:action="@{/auth/login}" method="post">
 
@@ -216,6 +224,15 @@
             </div>
 
             <button type="submit" class="btn-signin">Sign In</button>
+
+            <!-- Forgot password link -->
+            <div style="text-align:center; margin-top:16px;">
+                <a href="/forgot-password"
+                   style="font-family:'Inter',sans-serif; font-size:12px; color:rgba(201,166,107,0.7); text-decoration:none; transition:color 0.2s;"
+                   onmouseover="this.style.color='#C9A66B'" onmouseout="this.style.color='rgba(201,166,107,0.7)'">
+                    Forgot your password?
+                </a>
+            </div>
         </form>
 
         <!-- Divider -->
