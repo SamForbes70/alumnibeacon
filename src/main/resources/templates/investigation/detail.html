@@ -56,13 +56,34 @@
              hx-trigger="every 5s"
              hx-target="#polling-banner"
              hx-swap="outerHTML">
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p class="text-blue-700 font-medium">August OSINT search in progress...</p>
+
+            <!-- Standard engine progress (python) -->
+            <div th:if="${investigation.preferredEngine == null or investigation.preferredEngine == 'python'}"
+                 class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-blue-700 font-medium">⚡ Standard search in progress...</p>
+                    </div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">⚡ Standard</span>
                 </div>
-                <p class="text-blue-500 text-sm mt-2">This page will automatically update when results are ready. Typical search time: 30–90 seconds.</p>
+                <p class="text-blue-500 text-sm mt-2">This page will automatically update when results are ready. Estimated time: ~1–2 minutes.</p>
             </div>
+
+            <!-- Deep Investigation progress (agent-zero) -->
+            <div th:if="${investigation.preferredEngine == 'agent-zero'}"
+                 class="bg-purple-50 border border-purple-200 rounded-xl p-6 mb-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-purple-700 font-medium">🤖 Deep Investigation in progress...</p>
+                    </div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">🤖 Deep Investigation</span>
+                </div>
+                <p class="text-purple-600 text-sm mt-2">The AI agent is conducting an adaptive investigation across Australian sources. Estimated time: ~10–15 minutes.</p>
+                <p class="text-purple-500 text-xs mt-1">You'll receive an email notification when complete — you can safely close this tab.</p>
+            </div>
+
         </div>
 
 

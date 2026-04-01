@@ -11,11 +11,15 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 
 /**
- * Routes OSINT investigations to the appropriate engine based on osint.engine config.
+ * Routes OSINT investigations to the appropriate engine.
+ *
+ * Engine resolution order (highest to lowest priority):
+ *   1. Per-investigation preferredEngine (set by user on the form)
+ *   2. Global osint.engine config (application.properties / env var)
  *
  * Modes:
- *   python      - calls Python FastAPI adapter /osint/search (fast, ~60s)
- *   agent-zero  - calls Agent Zero A2A bridge /agent-zero/investigate (deep, ~15min)
+ *   python      - calls Python FastAPI adapter /osint/search (~60s)
+ *   agent-zero  - calls Agent Zero A2A bridge /agent-zero/investigate (~15min)
  *   hybrid      - tries agent-zero first, falls back to python on failure
  */
 @Component
@@ -23,18 +27,18 @@ import java.time.Duration;
 public class OsintAdapterRouter {
 
     private final WebClient adapterClient;
-    private final String osintEngine;
+    private final String globalEngine;
     private final long pythonTimeoutMs;
     private final long agentZeroTimeoutMs;
     private final ObjectMapper objectMapper;
 
     public OsintAdapterRouter(
             @Value("${august.adapter.url:http://localhost:8000}") String adapterUrl,
-            @Value("${osint.engine:python}") String osintEngine,
+            @Value("${osint.engine:python}") String globalEngine,
             @Value("${august.adapter.timeout:120000}") long pythonTimeoutMs,
             @Value("${agent-zero.timeout:900000}") long agentZeroTimeoutMs,
             ObjectMapper objectMapper) {
-        this.osintEngine = osintEngine.toLowerCase().trim();
+        this.globalEngine = globalEngine.toLowerCase().trim();
         this.pythonTimeoutMs = pythonTimeoutMs;
         this.agentZeroTimeoutMs = agentZeroTimeoutMs;
         this.objectMapper = objectMapper;
@@ -42,16 +46,27 @@ public class OsintAdapterRouter {
             .baseUrl(adapterUrl)
             .codecs(c -> c.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
             .build();
-        log.info("OsintAdapterRouter configured: engine={}, adapterUrl={}, pythonTimeout={}ms, agentZeroTimeout={}ms",
-            this.osintEngine, adapterUrl, pythonTimeoutMs, agentZeroTimeoutMs);
+        log.info("OsintAdapterRouter configured: globalEngine={}, adapterUrl={}, pythonTimeout={}ms, agentZeroTimeout={}ms",
+            this.globalEngine, adapterUrl, pythonTimeoutMs, agentZeroTimeoutMs);
     }
 
     /**
-     * Route the investigation payload to the configured engine.
-     * Returns raw JSON string with an injected 'engine' field.
+     * Route using global engine config (backward-compatible overload).
      */
     public Mono<String> route(String payloadJson) {
-        return switch (osintEngine) {
+        return route(payloadJson, null);
+    }
+
+    /**
+     * Route with per-investigation engine override.
+     * If preferredEngine is non-null and non-blank, it takes priority over global config.
+     */
+    public Mono<String> route(String payloadJson, String preferredEngine) {
+        String engine = resolveEngine(preferredEngine);
+        log.info("Routing investigation: preferredEngine={}, globalEngine={}, resolved={}",
+            preferredEngine, globalEngine, engine);
+
+        return switch (engine) {
             case "agent-zero" -> callAgentZero(payloadJson)
                 .map(json -> injectEngine(json, "agent-zero"));
             case "hybrid" -> callAgentZero(payloadJson)
@@ -66,9 +81,23 @@ public class OsintAdapterRouter {
         };
     }
 
+    /**
+     * Resolve the effective engine: per-investigation preference takes priority over global config.
+     */
+    private String resolveEngine(String preferredEngine) {
+        if (preferredEngine != null && !preferredEngine.isBlank()) {
+            String pe = preferredEngine.trim().toLowerCase();
+            // Only allow known engine values
+            if (pe.equals("agent-zero") || pe.equals("python") || pe.equals("hybrid")) {
+                return pe;
+            }
+        }
+        return globalEngine;
+    }
+
     /** Call the Python FastAPI adapter at /osint/search */
     private Mono<String> callPython(String payloadJson) {
-        log.info("Routing to Python adapter (engine={})", osintEngine);
+        log.info("Calling Python adapter");
         return adapterClient.post()
             .uri("/osint/search")
             .contentType(MediaType.APPLICATION_JSON)
@@ -91,7 +120,7 @@ public class OsintAdapterRouter {
 
     /** Call the Agent Zero A2A bridge at /agent-zero/investigate */
     private Mono<String> callAgentZero(String payloadJson) {
-        log.info("Routing to Agent Zero A2A bridge (engine={})", osintEngine);
+        log.info("Calling Agent Zero A2A bridge");
         return adapterClient.post()
             .uri("/agent-zero/investigate")
             .contentType(MediaType.APPLICATION_JSON)
@@ -125,7 +154,5 @@ public class OsintAdapterRouter {
         }
     }
 
-    public String getEngine() {
-        return osintEngine;
-    }
+    public String getGlobalEngine() { return globalEngine; }
 }

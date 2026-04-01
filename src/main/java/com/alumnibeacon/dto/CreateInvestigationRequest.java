@@ -1,5 +1,6 @@
 package com.alumnibeacon.dto;
 import jakarta.validation.constraints.NotBlank;
+
 public record CreateInvestigationRequest(
     @NotBlank String subjectName,
     String subjectDob,
@@ -8,5 +9,7 @@ public record CreateInvestigationRequest(
     String subjectLastKnownPhone,
     Integer subjectGraduationYear,
     String subjectLastKnownEmployer,
-    String subjectNotes
+    String subjectNotes,
+    /** 'python' = Standard (~60s) | 'agent-zero' = Deep Investigation (~15min) */
+    String preferredEngine
 ) {}

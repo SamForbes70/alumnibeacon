@@ -32,14 +32,18 @@
 
         <div class="max-w-2xl">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <form th:action="@{/investigations}" method="post" class="space-y-6">
+                <form th:action="@{/investigations}" method="post" class="space-y-6" id="investigation-form">
+
+                    <!-- Hidden engine field — set by depth toggle JS -->
+                    <input type="hidden" name="preferredEngine" id="preferredEngine" value="python">
+
                     <!-- Required -->
                     <div>
                         <h3 class="font-serif text-lg text-beacon-charcoal mb-4">Subject Details</h3>
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Full Name <span class="text-red-500">*</span></label>
-                                <input type="text" name="subjectName" required
+                                <input type="text" name="subjectName" id="subjectName" required
                                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beacon-magenta outline-none"
                                        placeholder="e.g. Sarah Jane Mitchell">
                             </div>
@@ -52,7 +56,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Graduation Year</label>
-                                    <input type="number" name="subjectGraduationYear" min="1950" max="2024"
+                                    <input type="number" name="subjectGraduationYear" min="1950" max="2030"
                                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-beacon-magenta outline-none"
                                            placeholder="e.g. 2003">
                                 </div>
@@ -91,15 +95,68 @@
                         </div>
                     </div>
 
+                    <!-- ── Investigation Depth Toggle ── -->
+                    <div id="depth-toggle-section">
+                        <h3 class="font-serif text-lg text-beacon-charcoal mb-1">Investigation Depth</h3>
+                        <p class="text-xs text-gray-400 mb-4">Choose how thoroughly to search. Deep investigations use AI reasoning and may take up to 15 minutes.</p>
+                        <div class="grid grid-cols-2 gap-4">
+
+                            <!-- Standard card -->
+                            <div id="card-standard"
+                                 class="depth-card cursor-pointer rounded-xl border-2 border-beacon-magenta bg-beacon-magenta bg-opacity-5 p-4 transition-all"
+                                 data-engine="python">
+                                <div class="flex items-start gap-3">
+                                    <div class="text-2xl">⚡</div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-semibold text-beacon-charcoal text-sm">Standard</span>
+                                            <span id="check-standard" class="text-beacon-magenta text-sm font-bold">✓</span>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">API pipeline search across LinkedIn, People Data Labs, and Hunter.io</p>
+                                        <div class="mt-2 flex items-center gap-2">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">~1–2 min</span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Recommended</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Deep Investigation card -->
+                            <div id="card-deep"
+                                 class="depth-card cursor-pointer rounded-xl border-2 border-gray-200 bg-white p-4 transition-all hover:border-purple-300"
+                                 data-engine="agent-zero">
+                                <div class="flex items-start gap-3">
+                                    <div class="text-2xl">🤖</div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-semibold text-beacon-charcoal text-sm">Deep Investigation</span>
+                                            <span id="check-deep" class="text-purple-600 text-sm font-bold hidden">✓</span>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">AI agent with adaptive reasoning — follows leads, cross-references AU sources</p>
+                                        <div class="mt-2 flex items-center gap-2">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">~10–15 min</span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">Higher accuracy</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <!-- Deep investigation notice (hidden by default) -->
+                        <div id="deep-notice" class="hidden mt-3 bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs text-purple-700">
+                            <strong>Deep Investigation selected.</strong> You'll receive an email notification when the investigation completes. The page will show a progress indicator while the AI agent works.
+                        </div>
+                    </div>
+
                     <!-- Privacy notice -->
                     <div class="bg-beacon-cream rounded-lg p-4 text-xs text-gray-500">
                         <strong class="text-beacon-charcoal">Privacy Notice:</strong> This search is conducted in compliance with the Australian Privacy Act 1988. All searches are logged for audit purposes. Only use for legitimate alumni reconnection purposes.
                     </div>
 
                     <div class="flex gap-4">
-                        <button type="submit"
+                        <button type="submit" id="submit-btn"
                                 class="flex-1 bg-beacon-magenta text-white py-3 rounded-lg font-medium hover:bg-pink-800 transition-colors">
-                            🔍 Begin OSINT Search
+                            🔍 Begin Standard Search
                         </button>
                         <a href="/dashboard" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors text-center">
                             Cancel
@@ -110,5 +167,56 @@
         </div>
     </main>
 </div>
+
+<script>
+(function() {
+    var engineInput  = document.getElementById('preferredEngine');
+    var submitBtn    = document.getElementById('submit-btn');
+    var deepNotice   = document.getElementById('deep-notice');
+    var cardStandard = document.getElementById('card-standard');
+    var cardDeep     = document.getElementById('card-deep');
+    var checkStd     = document.getElementById('check-standard');
+    var checkDeep    = document.getElementById('check-deep');
+
+    function selectEngine(engine) {
+        engineInput.value = engine;
+
+        if (engine === 'agent-zero') {
+            // Deep selected
+            cardDeep.classList.remove('border-gray-200', 'bg-white');
+            cardDeep.classList.add('border-purple-500', 'bg-purple-50');
+            cardStandard.classList.remove('border-beacon-magenta', 'bg-opacity-5');
+            cardStandard.classList.add('border-gray-200', 'bg-white');
+            checkDeep.classList.remove('hidden');
+            checkStd.classList.add('hidden');
+            deepNotice.classList.remove('hidden');
+            submitBtn.textContent = '🤖 Begin Deep Investigation';
+            submitBtn.classList.remove('bg-beacon-magenta', 'hover:bg-pink-800');
+            submitBtn.classList.add('bg-purple-700', 'hover:bg-purple-800');
+        } else {
+            // Standard selected
+            cardStandard.classList.remove('border-gray-200', 'bg-white');
+            cardStandard.classList.add('border-beacon-magenta', 'bg-opacity-5');
+            cardDeep.classList.remove('border-purple-500', 'bg-purple-50');
+            cardDeep.classList.add('border-gray-200', 'bg-white');
+            checkStd.classList.remove('hidden');
+            checkDeep.classList.add('hidden');
+            deepNotice.classList.add('hidden');
+            submitBtn.textContent = '🔍 Begin Standard Search';
+            submitBtn.classList.remove('bg-purple-700', 'hover:bg-purple-800');
+            submitBtn.classList.add('bg-beacon-magenta', 'hover:bg-pink-800');
+        }
+    }
+
+    document.querySelectorAll('.depth-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+            selectEngine(this.dataset.engine);
+        });
+    });
+
+    // Initialise to standard
+    selectEngine('python');
+})();
+</script>
 </body>
 </html>

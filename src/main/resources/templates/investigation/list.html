@@ -119,6 +119,7 @@
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">SUBJECT</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">STATUS</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">ENGINE</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">CONFIDENCE</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">CREATED</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold" style="color: #6B7280;">ACTIONS</th>
@@ -127,8 +128,7 @@
                 <tbody th:fragment="rows">
                     <!-- Empty state -->
                     <tr th:if="${#lists.isEmpty(investigations)}">
-                        <td colspan="5" class="px-4 py-12 text-center">
-                            <div class="flex flex-col items-center">
+                         <td colspan="6" class="px-4 py-12 text-center">
                                 <svg class="w-12 h-12 mb-3" style="color: #D1D5DB;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -176,6 +176,14 @@
                             <div th:if="${inv.status == 'PROCESSING'}" class="mt-1 w-24 bg-gray-200 rounded-full h-1">
                                 <div class="h-1 rounded-full" style="background: #C9A66B; width: 45%;"></div>
                             </div>
+                        </td>
+
+                        <!-- Engine badge -->
+                        <td class="px-4 py-3">
+                            <span th:if="${inv.preferredEngine == 'agent-zero'}"
+                                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">🤖 Deep</span>
+                            <span th:if="${inv.preferredEngine == null or inv.preferredEngine == 'python'}"
+                                   class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">⚡ Standard</span>
                         </td>
 
                         <!-- Confidence -->

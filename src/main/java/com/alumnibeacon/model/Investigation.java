@@ -44,6 +44,10 @@ public class Investigation {
     @Column(name = "subject_notes", columnDefinition = "TEXT")
     private String subjectNotes;
 
+    /** Engine preference set at creation time: 'python' (Standard) | 'agent-zero' (Deep) | null (use global config) */
+    @Column(name = "preferred_engine")
+    private String preferredEngine;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     @Builder.Default

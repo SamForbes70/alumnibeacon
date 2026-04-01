@@ -6,6 +6,7 @@ import com.alumnibeacon.model.JobQueue;
 import com.alumnibeacon.repository.InvestigationRepository;
 import com.alumnibeacon.repository.JobQueueRepository;
 import com.alumnibeacon.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,17 +22,18 @@ import java.util.List;
 @Slf4j
 public class JobQueueScheduler {
 
-    private final JobQueueRepository    jobQueueRepository;
+    private final JobQueueRepository      jobQueueRepository;
     private final InvestigationRepository investigationRepository;
-    private final OsintAdapterRouter    osintRouter;
-    private final EmailService          emailService;
-    private final UserRepository        userRepository;
+    private final OsintAdapterRouter      osintRouter;
+    private final EmailService            emailService;
+    private final UserRepository          userRepository;
+    private final ObjectMapper            objectMapper;
 
     @Value("${app.base-url:http://localhost:8080}")
     private String appBaseUrl;
 
     /**
-     * Main queue processor - runs every 5 seconds.
+     * Main queue processor — runs every 5 seconds.
      * Uses synchronous .block() so @Transactional works correctly
      * on the Spring-managed scheduler thread.
      */
@@ -47,8 +49,9 @@ public class JobQueueScheduler {
         if (pending.isEmpty()) return;
 
         JobQueue job = pending.get(0);
-        log.info("Processing job {} for investigation: {} (engine={})",
-            job.getId(), job.getInvestigationId(), osintRouter.getEngine());
+        String preferredEngine = extractPreferredEngine(job.getPayloadJson());
+        log.info("Processing job {} for investigation: {} (preferredEngine={}, globalEngine={})",
+            job.getId(), job.getInvestigationId(), preferredEngine, osintRouter.getGlobalEngine());
         processJobSynchronously(job);
     }
 
@@ -97,7 +100,7 @@ public class JobQueueScheduler {
      *
      * WHY .block() instead of .subscribe():
      * - .subscribe() runs callbacks on Reactor threads
-     * - @Transactional uses ThreadLocal - doesn't propagate to Reactor threads
+     * - @Transactional uses ThreadLocal — doesn't propagate to Reactor threads
      * - Result: DB saves in callbacks silently fail, job stays PROCESSING forever
      * - .block() keeps execution on the Spring scheduler thread where @Transactional works
      */
@@ -116,19 +119,22 @@ public class JobQueueScheduler {
         });
 
         try {
-            log.info("Routing OSINT investigation {} via {} engine (attempt {}/{})",
-                job.getInvestigationId(), osintRouter.getEngine(),
-                job.getAttempts(), job.getMaxAttempts());
+            // Extract per-investigation engine preference from payload
+            String preferredEngine = extractPreferredEngine(job.getPayloadJson());
+            log.info("Routing OSINT investigation {} via engine={} (preferredEngine={}, attempt {}/{})",
+                job.getInvestigationId(), resolveEffectiveEngine(preferredEngine),
+                preferredEngine, job.getAttempts(), job.getMaxAttempts());
 
-            String resultJson = osintRouter.route(job.getPayloadJson()).block();
+            // Route with per-investigation engine preference
+            String resultJson = osintRouter.route(job.getPayloadJson(), preferredEngine).block();
 
             if (resultJson == null || resultJson.isBlank()) {
                 throw new RuntimeException("OSINT router returned empty response");
             }
 
             // SUCCESS
-            log.info("OSINT investigation completed for {} (engine={})",
-                job.getInvestigationId(), osintRouter.getEngine());
+            log.info("OSINT investigation completed for {} (preferredEngine={})",
+                job.getInvestigationId(), preferredEngine);
             job.setStatus(JobQueue.Status.COMPLETED);
             job.setResultJson(resultJson);
             job.setCompletedAt(LocalDateTime.now());
@@ -139,17 +145,16 @@ public class JobQueueScheduler {
                 inv.setResultJson(resultJson);
                 inv.setCompletedAt(LocalDateTime.now());
 
-                // Extract confidence score and engine from result
-                String engine = osintRouter.getEngine();
+                // Extract confidence score and actual engine from result JSON
+                String actualEngine = resolveEffectiveEngine(preferredEngine);
                 try {
-                    var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                    var node   = mapper.readTree(resultJson);
+                    var node = objectMapper.readTree(resultJson);
                     if (node.has("confidence_score")) {
                         inv.setConfidenceScore(node.get("confidence_score").asInt());
                     }
                     if (node.has("engine")) {
-                        engine = node.get("engine").asText();
-                        log.info("Investigation {} completed via engine: {}", inv.getId(), engine);
+                        actualEngine = node.get("engine").asText();
+                        log.info("Investigation {} completed via engine: {}", inv.getId(), actualEngine);
                     }
                 } catch (Exception e) {
                     log.warn("Could not parse result metadata", e);
@@ -157,7 +162,7 @@ public class JobQueueScheduler {
                 investigationRepository.save(inv);
 
                 // P4 — Send completion email notification
-                sendCompletionEmail(inv, engine);
+                sendCompletionEmail(inv, actualEngine);
             });
 
         } catch (Exception e) {
@@ -175,12 +180,10 @@ public class JobQueueScheduler {
                     inv.setStatus(Investigation.Status.FAILED);
                     inv.setErrorMessage(e.getMessage());
                     investigationRepository.save(inv);
-
-                    // P4 — Send failure email notification
                     sendFailureEmail(inv, e.getMessage());
                 });
             } else {
-                // Retry - reset to PENDING
+                // Retry — reset to PENDING
                 job.setStatus(JobQueue.Status.PENDING);
                 job.setErrorMessage(e.getMessage());
                 job.setStartedAt(null);
@@ -197,13 +200,37 @@ public class JobQueueScheduler {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // P4 — Email helpers
+    // Helpers
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Sends an investigation-completion email to the user who submitted it.
-     * Silently skips if the user cannot be found.
+     * Extract the preferred_engine field from the job payload JSON.
+     * Returns null if not present or on parse error (router will use global config).
      */
+    private String extractPreferredEngine(String payloadJson) {
+        if (payloadJson == null || payloadJson.isBlank()) return null;
+        try {
+            var node = objectMapper.readTree(payloadJson);
+            if (node.has("preferred_engine") && !node.get("preferred_engine").isNull()) {
+                String pe = node.get("preferred_engine").asText();
+                return pe.isBlank() ? null : pe;
+            }
+        } catch (Exception e) {
+            log.warn("Could not extract preferred_engine from payload: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    /** Resolve the effective engine for logging (mirrors OsintAdapterRouter logic). */
+    private String resolveEffectiveEngine(String preferredEngine) {
+        if (preferredEngine != null && !preferredEngine.isBlank()) return preferredEngine;
+        return osintRouter.getGlobalEngine();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // P4 — Email helpers
+    // ─────────────────────────────────────────────────────────────
+
     private void sendCompletionEmail(Investigation inv, String engine) {
         try {
             userRepository.findById(inv.getCreatedBy()).ifPresent(user ->
@@ -218,16 +245,11 @@ public class JobQueueScheduler {
                 )
             );
         } catch (Exception e) {
-            // Email failure must never break the investigation flow
             log.warn("Could not send completion email for investigation {}: {}",
                 inv.getId(), e.getMessage());
         }
     }
 
-    /**
-     * Sends an investigation-failure email to the user who submitted it.
-     * Silently skips if the user cannot be found.
-     */
     private void sendFailureEmail(Investigation inv, String errorMessage) {
         try {
             userRepository.findById(inv.getCreatedBy()).ifPresent(user ->

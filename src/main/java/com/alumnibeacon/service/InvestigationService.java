@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,6 +39,11 @@ public class InvestigationService {
 
     @Transactional
     public InvestigationDto create(CreateInvestigationRequest req, String tenantId, String userId) {
+        // Normalise engine preference — default to 'python' if not specified
+        String engine = (req.preferredEngine() != null && !req.preferredEngine().isBlank())
+            ? req.preferredEngine().trim().toLowerCase()
+            : "python";
+
         Investigation inv = Investigation.builder()
             .id(UUID.randomUUID().toString())
             .tenantId(tenantId)
@@ -50,27 +56,31 @@ public class InvestigationService {
             .subjectGraduationYear(req.subjectGraduationYear())
             .subjectLastKnownEmployer(req.subjectLastKnownEmployer())
             .subjectNotes(req.subjectNotes())
+            .preferredEngine(engine)
             .status(Investigation.Status.PENDING)
             .build();
         investigationRepository.save(inv);
 
-        // Build payload for August adapter
+        // Build payload for OSINT adapter — include preferred_engine so scheduler can route correctly
         try {
-            String payload = objectMapper.writeValueAsString(Map.of(
-                "name", req.subjectName(),
-                "dob", req.subjectDob() != null ? req.subjectDob() : "",
-                "last_known_address", req.subjectLastKnownAddress() != null ? req.subjectLastKnownAddress() : "",
-                "last_known_email", req.subjectLastKnownEmail() != null ? req.subjectLastKnownEmail() : "",
-                "graduation_year", req.subjectGraduationYear() != null ? req.subjectGraduationYear() : "",
-                "last_known_employer", req.subjectLastKnownEmployer() != null ? req.subjectLastKnownEmployer() : "",
-                "notes", req.subjectNotes() != null ? req.subjectNotes() : ""
-            ));
+            Map<String, Object> payloadMap = new HashMap<>();
+            payloadMap.put("name",                req.subjectName());
+            payloadMap.put("dob",                 req.subjectDob() != null ? req.subjectDob() : "");
+            payloadMap.put("last_known_address",  req.subjectLastKnownAddress() != null ? req.subjectLastKnownAddress() : "");
+            payloadMap.put("last_known_email",    req.subjectLastKnownEmail() != null ? req.subjectLastKnownEmail() : "");
+            payloadMap.put("graduation_year",     req.subjectGraduationYear() != null ? req.subjectGraduationYear() : "");
+            payloadMap.put("last_known_employer", req.subjectLastKnownEmployer() != null ? req.subjectLastKnownEmployer() : "");
+            payloadMap.put("notes",               req.subjectNotes() != null ? req.subjectNotes() : "");
+            payloadMap.put("preferred_engine",    engine);
+
+            String payload = objectMapper.writeValueAsString(payloadMap);
             JobQueue job = JobQueue.builder()
                 .investigationId(inv.getId())
                 .tenantId(tenantId)
                 .payloadJson(payload)
                 .build();
             jobQueueRepository.save(job);
+            log.info("Queued investigation {} with engine={}", inv.getId(), engine);
         } catch (Exception e) {
             log.error("Failed to queue investigation {}", inv.getId(), e);
         }
@@ -112,7 +122,7 @@ public class InvestigationService {
             .orElseThrow(() -> new RuntimeException("Investigation not found: " + id));
     }
 
-    /** Requeue a failed investigation. */
+    /** Requeue a failed investigation, preserving original engine preference. */
     @Transactional
     public void retry(String id, String tenantId) {
         Investigation inv = getEntityById(id, tenantId);
@@ -125,22 +135,24 @@ public class InvestigationService {
         inv.setCompletedAt(null);
         investigationRepository.save(inv);
 
-        // Re-queue the job
+        // Re-queue preserving original engine preference
         try {
-            String payload = objectMapper.writeValueAsString(Map.of(
-                "name", inv.getSubjectName(),
-                "dob", inv.getSubjectDob() != null ? inv.getSubjectDob() : "",
-                "last_known_address", inv.getSubjectLastKnownAddress() != null ? inv.getSubjectLastKnownAddress() : "",
-                "last_known_email", inv.getSubjectLastKnownEmail() != null ? inv.getSubjectLastKnownEmail() : "",
-                "last_known_employer", inv.getSubjectLastKnownEmployer() != null ? inv.getSubjectLastKnownEmployer() : ""
-            ));
+            Map<String, Object> payloadMap = new HashMap<>();
+            payloadMap.put("name",                inv.getSubjectName());
+            payloadMap.put("dob",                 inv.getSubjectDob() != null ? inv.getSubjectDob() : "");
+            payloadMap.put("last_known_address",  inv.getSubjectLastKnownAddress() != null ? inv.getSubjectLastKnownAddress() : "");
+            payloadMap.put("last_known_email",    inv.getSubjectLastKnownEmail() != null ? inv.getSubjectLastKnownEmail() : "");
+            payloadMap.put("last_known_employer", inv.getSubjectLastKnownEmployer() != null ? inv.getSubjectLastKnownEmployer() : "");
+            payloadMap.put("preferred_engine",    inv.getPreferredEngine() != null ? inv.getPreferredEngine() : "python");
+
+            String payload = objectMapper.writeValueAsString(payloadMap);
             JobQueue job = JobQueue.builder()
                 .investigationId(inv.getId())
                 .tenantId(tenantId)
                 .payloadJson(payload)
                 .build();
             jobQueueRepository.save(job);
-            log.info("Requeued investigation {}", id);
+            log.info("Requeued investigation {} with engine={}", id, inv.getPreferredEngine());
         } catch (Exception e) {
             log.error("Failed to requeue investigation {}", id, e);
             throw new RuntimeException("Failed to requeue: " + e.getMessage());
@@ -151,11 +163,11 @@ public class InvestigationService {
     @Transactional
     public void delete(String id, String tenantId) {
         Investigation inv = getEntityById(id, tenantId);
-        // Delete associated job queue entries
         jobQueueRepository.deleteByInvestigationId(id);
         investigationRepository.delete(inv);
         log.info("Deleted investigation {} for tenant {}", id, tenantId);
     }
+
     /**
      * Parse the raw resultJson string into a structured OsintResultDto.
      * Returns null if resultJson is null/blank or cannot be parsed.
@@ -169,6 +181,4 @@ public class InvestigationService {
             return null;
         }
     }
-
-
 }
