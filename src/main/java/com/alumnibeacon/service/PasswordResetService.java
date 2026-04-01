@@ -22,6 +22,7 @@ public class PasswordResetService {
     private final UserRepository               userRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder              passwordEncoder;
+    private final EmailService                 emailService;
 
     /** Token validity window (1 hour). */
     private static final int TOKEN_EXPIRY_HOURS = 1;
@@ -48,7 +49,7 @@ public class PasswordResetService {
         // Invalidate any existing unused tokens for this user
         tokenRepository.invalidateAllForUser(user.getId());
 
-        // Generate a new secure token
+        // Generate a new secure token (64-char hex, 256-bit entropy)
         String rawToken = UUID.randomUUID().toString().replace("-", "") +
                           UUID.randomUUID().toString().replace("-", "");
 
@@ -62,11 +63,17 @@ public class PasswordResetService {
 
         String resetUrl = baseUrl + "/reset-password?token=" + rawToken;
 
-        // ── Until P4 (email notifications) is implemented, log the URL ──
-        log.info("==================================================");
-        log.info("PASSWORD RESET LINK for {}:", email);
-        log.info("{}", resetUrl);
-        log.info("==================================================");
+        // Send email (real SMTP when mail.enabled=true, logged to console otherwise)
+        emailService.sendPasswordReset(user.getEmail(), user.getFullName(), resetUrl);
+
+        // Always log the URL — useful in dev even when email is enabled
+        log.info("Password reset token generated for: {}", email);
+        if (!emailService.isEnabled()) {
+            log.info("==================================================");
+            log.info("DEV MODE — PASSWORD RESET LINK for {}:", email);
+            log.info("{}", resetUrl);
+            log.info("==================================================");
+        }
 
         return resetUrl;
     }

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Investigation Complete</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7;padding:40px 20px;">
+    <tr>
+      <td align="center">
+
+        <!-- Card -->
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#1e293b;padding:28px 40px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px;">AlumniBeacon</span>
+                  </td>
+                  <td align="right">
+                    <span style="color:#94a3b8;font-size:12px;">Alumni Reconnection Platform</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Status Banner -->
+          <tr>
+            <td style="background:#dcfce7;border-bottom:1px solid #bbf7d0;padding:16px 40px;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-right:10px;font-size:20px;">&#10003;</td>
+                  <td style="font-size:14px;font-weight:600;color:#166534;">Investigation Complete</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px;">
+              <p style="margin:0 0 8px 0;font-size:15px;color:#64748b;">Hi <span th:text="${name}">there</span>,</p>
+              <h1 style="margin:0 0 24px 0;font-size:22px;font-weight:700;color:#0f172a;"
+                  th:text="'Results ready: ' + ${subjectName}">Results ready: Subject Name</h1>
+
+              <p style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.6;">
+                Your OSINT investigation has completed. Here's a summary of the findings:
+              </p>
+
+              <!-- Stats Row -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+                <tr>
+                  <td width="50%" style="padding:20px;border-right:1px solid #e2e8f0;text-align:center;">
+                    <div style="font-size:32px;font-weight:700;color:#0f172a;" th:text="${confidenceScore} + '%'">72%</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:4px;">Confidence Score</div>
+                  </td>
+                  <td width="50%" style="padding:20px;text-align:center;">
+                    <div style="font-size:14px;font-weight:600;color:#0f172a;" th:text="${engineLabel}">Standard</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:4px;">Investigation Engine</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 28px 0;">
+                <tr>
+                  <td style="background:#2563eb;border-radius:6px;">
+                    <a th:href="${detailUrl}" href="#"
+                       style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:6px;"
+                    >View Full Results</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;font-size:13px;color:#94a3b8;">
+                Log in to AlumniBeacon to view the complete investigation report, including
+                contact details, professional history, and recommended next steps.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;">
+                &copy; 2026 AlumniBeacon &mdash; Alumni Reconnection Platform<br>
+                You received this because you submitted an investigation on this platform.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Card -->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

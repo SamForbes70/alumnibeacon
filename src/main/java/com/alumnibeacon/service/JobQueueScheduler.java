@@ -5,8 +5,10 @@ import com.alumnibeacon.model.Investigation;
 import com.alumnibeacon.model.JobQueue;
 import com.alumnibeacon.repository.InvestigationRepository;
 import com.alumnibeacon.repository.JobQueueRepository;
+import com.alumnibeacon.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +21,14 @@ import java.util.List;
 @Slf4j
 public class JobQueueScheduler {
 
-    private final JobQueueRepository jobQueueRepository;
+    private final JobQueueRepository    jobQueueRepository;
     private final InvestigationRepository investigationRepository;
-    private final OsintAdapterRouter osintRouter;
+    private final OsintAdapterRouter    osintRouter;
+    private final EmailService          emailService;
+    private final UserRepository        userRepository;
+
+    @Value("${app.base-url:http://localhost:8080}")
+    private String appBaseUrl;
 
     /**
      * Main queue processor - runs every 5 seconds.
@@ -48,7 +55,6 @@ public class JobQueueScheduler {
     /**
      * Reset jobs stuck in PROCESSING back to PENDING.
      * Threshold: 20 minutes — accommodates Agent Zero deep investigations (~15 min).
-     * Python adapter jobs that genuinely time out will be caught by the 2-min WebClient timeout.
      */
     private void recoverStuckJobs() {
         LocalDateTime stuckThreshold = LocalDateTime.now().minusMinutes(20);
@@ -57,7 +63,6 @@ public class JobQueueScheduler {
             log.warn("Found {} stuck job(s) - resetting to PENDING", stuckJobs.size());
             for (JobQueue stuck : stuckJobs) {
                 if (stuck.getAttempts() >= stuck.getMaxAttempts()) {
-                    // Too many attempts - mark as failed
                     stuck.setStatus(JobQueue.Status.FAILED);
                     stuck.setErrorMessage("Max retry attempts exceeded - job timed out");
                     stuck.setCompletedAt(LocalDateTime.now());
@@ -67,10 +72,10 @@ public class JobQueueScheduler {
                         inv.setStatus(Investigation.Status.FAILED);
                         inv.setErrorMessage("Search timed out after " + stuck.getAttempts() + " attempts");
                         investigationRepository.save(inv);
+                        sendFailureEmail(inv, "Search timed out after " + stuck.getAttempts() + " attempts");
                     });
                     log.error("Job {} failed after {} attempts", stuck.getId(), stuck.getAttempts());
                 } else {
-                    // Reset to PENDING for retry
                     stuck.setStatus(JobQueue.Status.PENDING);
                     stuck.setStartedAt(null);
                     jobQueueRepository.save(stuck);
@@ -115,8 +120,6 @@ public class JobQueueScheduler {
                 job.getInvestigationId(), osintRouter.getEngine(),
                 job.getAttempts(), job.getMaxAttempts());
 
-            // SYNCHRONOUS call via router - .block() waits for result on current thread
-            // @Transactional works correctly here
             String resultJson = osintRouter.route(job.getPayloadJson()).block();
 
             if (resultJson == null || resultJson.isBlank()) {
@@ -137,20 +140,24 @@ public class JobQueueScheduler {
                 inv.setCompletedAt(LocalDateTime.now());
 
                 // Extract confidence score and engine from result
+                String engine = osintRouter.getEngine();
                 try {
                     var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                    var node = mapper.readTree(resultJson);
+                    var node   = mapper.readTree(resultJson);
                     if (node.has("confidence_score")) {
                         inv.setConfidenceScore(node.get("confidence_score").asInt());
                     }
                     if (node.has("engine")) {
-                        log.info("Investigation {} completed via engine: {}",
-                            inv.getId(), node.get("engine").asText());
+                        engine = node.get("engine").asText();
+                        log.info("Investigation {} completed via engine: {}", inv.getId(), engine);
                     }
                 } catch (Exception e) {
                     log.warn("Could not parse result metadata", e);
                 }
                 investigationRepository.save(inv);
+
+                // P4 — Send completion email notification
+                sendCompletionEmail(inv, engine);
             });
 
         } catch (Exception e) {
@@ -168,6 +175,9 @@ public class JobQueueScheduler {
                     inv.setStatus(Investigation.Status.FAILED);
                     inv.setErrorMessage(e.getMessage());
                     investigationRepository.save(inv);
+
+                    // P4 — Send failure email notification
+                    sendFailureEmail(inv, e.getMessage());
                 });
             } else {
                 // Retry - reset to PENDING
@@ -183,6 +193,56 @@ public class JobQueueScheduler {
                 log.info("Job {} reset to PENDING for retry ({}/{})",
                     job.getId(), job.getAttempts(), job.getMaxAttempts());
             }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // P4 — Email helpers
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Sends an investigation-completion email to the user who submitted it.
+     * Silently skips if the user cannot be found.
+     */
+    private void sendCompletionEmail(Investigation inv, String engine) {
+        try {
+            userRepository.findById(inv.getCreatedBy()).ifPresent(user ->
+                emailService.sendInvestigationComplete(
+                    user.getEmail(),
+                    user.getFullName(),
+                    inv.getSubjectName(),
+                    inv.getId(),
+                    inv.getConfidenceScore() != null ? inv.getConfidenceScore() : 0,
+                    engine,
+                    appBaseUrl
+                )
+            );
+        } catch (Exception e) {
+            // Email failure must never break the investigation flow
+            log.warn("Could not send completion email for investigation {}: {}",
+                inv.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Sends an investigation-failure email to the user who submitted it.
+     * Silently skips if the user cannot be found.
+     */
+    private void sendFailureEmail(Investigation inv, String errorMessage) {
+        try {
+            userRepository.findById(inv.getCreatedBy()).ifPresent(user ->
+                emailService.sendInvestigationFailed(
+                    user.getEmail(),
+                    user.getFullName(),
+                    inv.getSubjectName(),
+                    inv.getId(),
+                    errorMessage != null ? errorMessage : "Unknown error",
+                    appBaseUrl
+                )
+            );
+        } catch (Exception e) {
+            log.warn("Could not send failure email for investigation {}: {}",
+                inv.getId(), e.getMessage());
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.alumnibeacon.controller;
 
+import com.alumnibeacon.service.EmailService;
 import com.alumnibeacon.service.PasswordResetService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 public class PasswordResetController {
 
     private final PasswordResetService passwordResetService;
+    private final EmailService         emailService;
 
     // ─────────────────────────────────────────────────────────────
     // STEP 1 — Forgot Password (enter email)
@@ -28,16 +30,17 @@ public class PasswordResetController {
     public String forgotPasswordSubmit(@RequestParam String email,
                                        HttpServletRequest request,
                                        Model model) {
-        String baseUrl = getBaseUrl(request);
+        String baseUrl  = getBaseUrl(request);
         String resetUrl = passwordResetService.generateResetToken(email.trim(), baseUrl);
 
         // Always show the same success message to prevent email enumeration.
-        // In dev mode we also surface the reset URL on screen for convenience.
         model.addAttribute("submitted", true);
         model.addAttribute("email", email);
+        model.addAttribute("mailEnabled", emailService.isEnabled());
 
-        // DEV CONVENIENCE: show the link on screen until P4 (email) is wired
-        if (resetUrl != null) {
+        // DEV CONVENIENCE: show the reset link on screen only when SMTP is not configured.
+        // When mail.enabled=true the link is sent by email and not shown here.
+        if (resetUrl != null && !emailService.isEnabled()) {
             model.addAttribute("devResetUrl", resetUrl);
         }
 
@@ -70,7 +73,6 @@ public class PasswordResetController {
                                       @RequestParam String password,
                                       @RequestParam String confirmPassword,
                                       Model model) {
-        // Client-side validation backup
         if (!password.equals(confirmPassword)) {
             model.addAttribute("token", token);
             model.addAttribute("error", "Passwords do not match.");
@@ -100,7 +102,6 @@ public class PasswordResetController {
         String scheme = request.getScheme();
         String host   = request.getServerName();
         int    port   = request.getServerPort();
-        // Omit default ports
         if (("http".equals(scheme) && port == 80) ||
             ("https".equals(scheme) && port == 443)) {
             return scheme + "://" + host;
