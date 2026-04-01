@@ -34,7 +34,7 @@ public class SecurityConfig {
                     "/auth/**",
                     "/login",
                     "/register",
-                    "/forgot-password",
+                    "/pricing", "/billing/webhook", "/forgot-password",
                     "/reset-password",
                     "/css/**",
                     "/js/**",

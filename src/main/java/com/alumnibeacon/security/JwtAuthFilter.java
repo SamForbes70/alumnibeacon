@@ -23,7 +23,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     /** Public paths that never require authentication. */
     private static final Set<String> PUBLIC_PREFIXES = Set.of(
         "/auth/", "/login", "/register",
-        "/forgot-password", "/reset-password",
+        "/pricing", "/billing/webhook", "/forgot-password", "/reset-password",
         "/css/", "/js/", "/images/", "/webjars/",
         "/actuator/health", "/error"
     );

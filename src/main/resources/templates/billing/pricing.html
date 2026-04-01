@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing | AlumniBeacon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config={theme:{extend:{colors:{beacon:{charcoal:'#1C2526',magenta:'#9C2A6B',gold:'#C9A66B',cream:'#F8F1E9'}}}}}</script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+        .toggle-pill { transition: transform 0.2s ease; }
+        .plan-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .plan-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
+    </style>
+</head>
+<body class="bg-beacon-cream">
+
+<!-- ── Navigation ── -->
+<nav class="bg-beacon-charcoal text-white">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-beacon-gold rounded-full flex items-center justify-center">
+                <span class="text-beacon-charcoal font-bold text-sm">AB</span>
+            </div>
+            <span class="font-serif text-xl font-semibold text-beacon-gold">AlumniBeacon</span>
+        </a>
+        <div class="hidden md:flex items-center gap-8 text-sm text-gray-300">
+            <a href="#features" class="hover:text-white transition-colors">Features</a>
+            <a href="/pricing" class="text-white font-medium">Pricing</a>
+            <a href="#contact" class="hover:text-white transition-colors">Contact</a>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="/login" class="text-sm text-gray-300 hover:text-white transition-colors">Sign in</a>
+            <a href="/register" class="bg-beacon-magenta text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-800 transition-colors">Get Started</a>
+        </div>
+    </div>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="relative bg-beacon-charcoal overflow-hidden" style="min-height: 340px;">
+    <!-- Background image overlay -->
+    <div class="absolute inset-0 bg-gradient-to-b from-beacon-charcoal/80 to-beacon-charcoal/60"></div>
+    <div class="absolute inset-0" style="background: linear-gradient(135deg, #1C2526 0%, #2d3a3b 50%, #1C2526 100%);"></div>
+    <!-- Decorative circles -->
+    <div class="absolute top-10 right-20 w-64 h-64 rounded-full opacity-5" style="background: #C9A66B;"></div>
+    <div class="absolute -bottom-10 left-10 w-48 h-48 rounded-full opacity-5" style="background: #9C2A6B;"></div>
+
+    <div class="relative max-w-6xl mx-auto px-6 py-20 text-center">
+        <p class="text-beacon-gold text-sm font-medium tracking-widest uppercase mb-4">Simple, transparent pricing</p>
+        <h1 class="font-serif text-4xl md:text-5xl text-white font-bold mb-4">
+            Choose the plan that<br>
+            <span class="text-beacon-gold">honours your community</span>
+        </h1>
+        <p class="text-gray-300 text-lg max-w-xl mx-auto">Reconnect with alumni using AI-powered OSINT. No hidden fees, no per-search charges.</p>
+
+        <!-- Monthly / Annual toggle -->
+        <div class="flex items-center justify-center gap-4 mt-8">
+            <span id="lbl-monthly" class="text-white text-sm font-medium">Monthly</span>
+            <button id="billing-toggle"
+                    onclick="toggleBilling()"
+                    class="relative w-12 h-6 bg-beacon-magenta rounded-full focus:outline-none"
+                    aria-label="Toggle annual billing">
+                <span id="toggle-dot" class="toggle-pill absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow"></span>
+            </button>
+            <span id="lbl-annual" class="text-gray-400 text-sm">Annual
+                <span class="ml-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">Save 20%</span>
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- ── Pricing Cards ── -->
+<div class="max-w-6xl mx-auto px-6 -mt-8 pb-24">
+    <div class="grid md:grid-cols-3 gap-6 items-start">
+
+        <!-- Starter -->
+        <div class="plan-card bg-white rounded-2xl shadow-md border border-gray-100 p-8">
+            <div class="mb-6">
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Starter</p>
+                <div class="flex items-end gap-1">
+                    <span class="font-serif text-5xl font-bold text-beacon-charcoal" id="price-starter">$49</span>
+                    <span class="text-gray-400 mb-2">/month</span>
+                </div>
+                <p class="text-gray-500 text-sm mt-2">Perfect for small institutions and alumni offices getting started.</p>
+            </div>
+            <ul class="space-y-3 mb-8">
+                <li class="flex items-center gap-3 text-sm text-gray-600">
+                    <span class="text-green-500 font-bold">✓</span> 50 investigations / month
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-600">
+                    <span class="text-green-500 font-bold">✓</span> Standard OSINT pipeline
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-600">
+                    <span class="text-green-500 font-bold">✓</span> PDF reports
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-600">
+                    <span class="text-green-500 font-bold">✓</span> Email notifications
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-300">
+                    <span class="text-gray-300">✗</span> Deep AI investigations
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-300">
+                    <span class="text-gray-300">✗</span> Priority support
+                </li>
+            </ul>
+            <a href="/billing/checkout/starter"
+               class="block w-full text-center bg-gray-100 text-beacon-charcoal py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                Get Started
+            </a>
+        </div>
+
+        <!-- Professional (featured) -->
+        <div class="plan-card rounded-2xl shadow-xl p-8 relative" style="background: #9C2A6B; margin-top: -12px;">
+            <div class="absolute -top-4 left-1/2 -translate-x-1/2">
+                <span class="bg-beacon-gold text-beacon-charcoal text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">Most Popular</span>
+            </div>
+            <div class="mb-6">
+                <p class="text-sm font-semibold text-pink-200 uppercase tracking-wider mb-2">Professional</p>
+                <div class="flex items-end gap-1">
+                    <span class="font-serif text-5xl font-bold text-white" id="price-professional">$199</span>
+                    <span class="text-pink-200 mb-2">/month</span>
+                </div>
+                <p class="text-pink-200 text-sm mt-2">For universities and colleges running active alumni engagement programs.</p>
+            </div>
+            <ul class="space-y-3 mb-8">
+                <li class="flex items-center gap-3 text-sm text-white">
+                    <span class="text-beacon-gold font-bold">✓</span> 250 investigations / month
+                </li>
+                <li class="flex items-center gap-3 text-sm text-white">
+                    <span class="text-beacon-gold font-bold">✓</span> Standard OSINT pipeline
+                </li>
+                <li class="flex items-center gap-3 text-sm text-white">
+                    <span class="text-beacon-gold font-bold">✓</span> PDF reports
+                </li>
+                <li class="flex items-center gap-3 text-sm text-white">
+                    <span class="text-beacon-gold font-bold">✓</span> Email notifications
+                </li>
+                <li class="flex items-center gap-3 text-sm text-white">
+                    <span class="text-beacon-gold font-bold">✓</span> 🤖 Deep AI investigations
+                </li>
+                <li class="flex items-center gap-3 text-sm text-white">
+                    <span class="text-beacon-gold font-bold">✓</span> Priority support
+                </li>
+            </ul>
+            <a href="/billing/checkout/professional"
+               class="block w-full text-center bg-white text-beacon-magenta py-3 rounded-xl font-semibold hover:bg-beacon-cream transition-colors">
+                Get Started
+            </a>
+        </div>
+
+        <!-- Enterprise -->
+        <div class="plan-card bg-beacon-charcoal rounded-2xl shadow-md p-8">
+            <div class="mb-6">
+                <p class="text-sm font-semibold text-beacon-gold uppercase tracking-wider mb-2">Enterprise</p>
+                <div class="flex items-end gap-1">
+                    <span class="font-serif text-4xl font-bold text-white">Custom</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-2">For large university networks, government bodies, and multi-campus institutions.</p>
+            </div>
+            <ul class="space-y-3 mb-8">
+                <li class="flex items-center gap-3 text-sm text-gray-300">
+                    <span class="text-beacon-gold font-bold">✓</span> Unlimited investigations
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-300">
+                    <span class="text-beacon-gold font-bold">✓</span> All Professional features
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-300">
+                    <span class="text-beacon-gold font-bold">✓</span> Dedicated account manager
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-300">
+                    <span class="text-beacon-gold font-bold">✓</span> Custom integrations
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-300">
+                    <span class="text-beacon-gold font-bold">✓</span> SLA guarantee
+                </li>
+                <li class="flex items-center gap-3 text-sm text-gray-300">
+                    <span class="text-beacon-gold font-bold">✓</span> On-premise option
+                </li>
+            </ul>
+            <a href="mailto:hello@alumnibeacon.com"
+               class="block w-full text-center border border-beacon-gold text-beacon-gold py-3 rounded-xl font-medium hover:bg-beacon-gold hover:text-beacon-charcoal transition-colors">
+                Contact Sales
+            </a>
+        </div>
+    </div>
+
+    <!-- Annual savings note -->
+    <p id="annual-note" class="text-center text-sm text-gray-500 mt-6 hidden">
+        Annual billing: <strong>Starter $470/yr</strong> (save $118) · <strong>Professional $1,910/yr</strong> (save $478)
+    </p>
+
+    <!-- Trust badges -->
+    <div class="mt-16 text-center">
+        <p class="text-sm text-gray-400 mb-6">Trusted by institutions across Australia and New Zealand</p>
+        <div class="flex items-center justify-center gap-8 flex-wrap">
+            <div class="text-gray-300 text-sm font-medium">🔒 Privacy Act 1988 Compliant</div>
+            <div class="text-gray-300 text-sm font-medium">🛡️ GDPR Ready</div>
+            <div class="text-gray-300 text-sm font-medium">💳 Powered by Stripe</div>
+            <div class="text-gray-300 text-sm font-medium">🤖 AI-Powered OSINT</div>
+        </div>
+    </div>
+</div>
+
+<script>
+var isAnnual = false;
+var prices = { starter: { monthly: 49, annual: 39 }, professional: { monthly: 199, annual: 159 } };
+
+function toggleBilling() {
+    isAnnual = !isAnnual;
+    var dot = document.getElementById('toggle-dot');
+    var lblMonthly = document.getElementById('lbl-monthly');
+    var lblAnnual = document.getElementById('lbl-annual');
+    var annualNote = document.getElementById('annual-note');
+
+    dot.style.transform = isAnnual ? 'translateX(24px)' : 'translateX(0)';
+    lblMonthly.className = isAnnual ? 'text-gray-400 text-sm' : 'text-white text-sm font-medium';
+    lblAnnual.className = isAnnual ? 'text-white text-sm font-medium' : 'text-gray-400 text-sm';
+    annualNote.classList.toggle('hidden', !isAnnual);
+
+    document.getElementById('price-starter').textContent = '$' + (isAnnual ? prices.starter.annual : prices.starter.monthly);
+    document.getElementById('price-professional').textContent = '$' + (isAnnual ? prices.professional.annual : prices.professional.monthly);
+}
+</script>
+</body>
+</html>

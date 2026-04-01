@@ -55,6 +55,24 @@ public class Tenant {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+
+    @Column(name = "subscription_status", nullable = false)
+    @Builder.Default
+    private String subscriptionStatus = "trialing";
+
+    @Column(name = "subscription_period_end")
+    private String subscriptionPeriodEnd;
+
+    @Column(name = "monthly_investigation_limit", nullable = false)
+    @Builder.Default
+    private int monthlyInvestigationLimit = 10;
+
+    @Column(name = "investigations_used_this_month", nullable = false)
+    @Builder.Default
+    private int investigationsUsedThisMonth = 0;
+
+    @Column(name = "billing_cycle_anchor")
+    private String billingCycleAnchor;
     public enum Plan { STARTER, PROFESSIONAL, ENTERPRISE }
 
     @PrePersist
