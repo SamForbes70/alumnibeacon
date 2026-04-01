@@ -5,18 +5,43 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - alumnibeacon-data:/data
+      - alumnibeacon-data:/app/data
     environment:
+      # Core
+      - SPRING_PROFILES_ACTIVE=prod
       - JWT_SECRET=change-this-to-a-secure-random-string-min-32-chars
+      - DATA_DIR=/app/data
+      - APP_BASE_URL=http://localhost:8080
+      # OSINT Engine
+      - OSINT_ENGINE=python
       - AUGUST_ADAPTER_URL=http://localhost:8000
-      - DATA_DIR=/data
+      - AGENT_ZERO_URL=http://localhost:80
+      # OSINT API Keys (fill in .env file)
+      - API_KEY_OPENROUTER=${API_KEY_OPENROUTER:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GOOGLE_CSE_ID=${GOOGLE_CSE_ID:-}
+      - PROXYCURL_API_KEY=${PROXYCURL_API_KEY:-}
+      - PDL_API_KEY=${PDL_API_KEY:-}
+      - HUNTER_API_KEY=${HUNTER_API_KEY:-}
+      # Email
+      - MAIL_ENABLED=${MAIL_ENABLED:-false}
+      - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_FROM=${MAIL_FROM:-noreply@alumnibeacon.com}
+      # Stripe
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PRICE_ID_STARTER=${STRIPE_PRICE_ID_STARTER:-}
+      - STRIPE_PRICE_ID_PROFESSIONAL=${STRIPE_PRICE_ID_PROFESSIONAL:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 90s
 
 volumes:
   alumnibeacon-data:

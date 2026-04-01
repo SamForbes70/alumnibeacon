@@ -5,18 +5,64 @@ services:
     plan: starter
     healthCheckPath: /actuator/health
     envVars:
-      - key: JWT_SECRET
-        sync: false
-      - key: API_KEY_OPENROUTER
-        sync: false
+      # ── Core ────────────────────────────────────────────────────────────────
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: AUGUST_ADAPTER_URL
-        value: http://localhost:8000
-      - key: DATA_DIR
-        value: /app/data
       - key: PORT
         value: 8080
+      - key: DATA_DIR
+        value: /app/data
+      - key: JWT_SECRET
+        generateValue: true          # Render auto-generates a secure random value
+      - key: APP_BASE_URL
+        sync: false                  # e.g. https://alumnibeacon.onrender.com
+
+      # ── OSINT Engine ────────────────────────────────────────────────────────
+      - key: OSINT_ENGINE
+        value: python                # python | agent-zero | hybrid
+      - key: AUGUST_ADAPTER_URL
+        value: http://localhost:8000
+      - key: AGENT_ZERO_URL
+        value: http://localhost:80
+
+      # ── OSINT API Keys ──────────────────────────────────────────────────────
+      - key: API_KEY_OPENROUTER
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_CSE_ID
+        sync: false
+      - key: PROXYCURL_API_KEY
+        sync: false
+      - key: PDL_API_KEY
+        sync: false
+      - key: HUNTER_API_KEY
+        sync: false
+
+      # ── Email (P4) ──────────────────────────────────────────────────────────
+      - key: MAIL_ENABLED
+        value: "false"               # Set to "true" once SMTP is configured
+      - key: MAIL_HOST
+        sync: false                  # e.g. smtp.sendgrid.net
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false                  # e.g. noreply@alumnibeacon.com
+
+      # ── Stripe Billing (P6) ─────────────────────────────────────────────────
+      - key: STRIPE_SECRET_KEY
+        sync: false                  # sk_live_...
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false                  # whsec_...
+      - key: STRIPE_PRICE_ID_STARTER
+        sync: false                  # price_...
+      - key: STRIPE_PRICE_ID_PROFESSIONAL
+        sync: false                  # price_...
+
     disk:
       name: alumnibeacon-data
       mountPath: /app/data
